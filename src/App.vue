@@ -31,7 +31,7 @@ async function entrarReunion() {
     ZoomMtg.preLoadWasm()
     ZoomMtg.prepareWebSDK()
 
-    const response = await fetch('http://localhost:4000/signature', {
+    const response = await fetch('/api/signature', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
