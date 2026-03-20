@@ -1,23 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
 import ClaseView from '../views/ClaseView.vue'
-
-const HomeView = {
-  template: `
-    <div>
-      <h1>Home</h1>
-      <p>Bienvenida a Easy Quick</p>
-    </div>
-  `
-}
-
-const LoginView = {
-  template: `
-    <div>
-      <h1>Login</h1>
-      <p>Aquí irá el acceso de alumnos</p>
-    </div>
-  `
-}
+import LoginView from '../views/LoginView.vue'
+import { getCurrentUser } from '../firebase'
 
 const routes = [
   {
@@ -28,18 +13,32 @@ const routes = [
   {
     path: '/login',
     name: 'login',
-    component: LoginView
+    component: LoginView,
+    meta: { guestOnly: true }
   },
   {
     path: '/clase',
     name: 'clase',
-    component: ClaseView
+    component: ClaseView,
+    meta: { requiresAuth: true }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach(async (to) => {
+  const user = await getCurrentUser()
+
+  if (to.meta.requiresAuth && !user) {
+    return '/login'
+  }
+
+  if (to.meta.guestOnly && user) {
+    return '/clase'
+  }
 })
 
 export default router
