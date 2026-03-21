@@ -1,32 +1,27 @@
 <template>
   <div class="home">
-    <header class="navbar">
-      <div class="nav-left">
-        <img src="/logo.png" alt="Quick & Easy" class="nav-logo" />
-      </div>
+   <header class="navbar">
+  <div class="nav-left">
+    <img src="/logo.png" alt="Quick & Easy" class="nav-logo" />
+  </div>
 
-      <div class="nav-right">
-        <a
-          href="https://wa.me/5210000000000"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="nav-link"
-        >
-          Informes
-        </a>
+  <div class="nav-right">
+    <router-link to="/" class="nav-link dark">
+      Home
+    </router-link>
 
-        <router-link to="/login" class="nav-btn">
-          Iniciar sesión
-        </router-link>
-      </div>
-    </header>
+    <router-link to="/login" class="nav-btn">
+      Iniciar sesión
+    </router-link>
+  </div>
+</header>
 
     <main>
       <section class="hero">
         <div class="hero-text">
-          <p class="eyebrow">🏆 Escuela Líder en Inglés Online</p>
+          
 
-          <h1>Domina el inglés <br>en 9 meses con clases profesionales en vivo</h1>
+          <h1>Domina el inglés <br>en 9 meses con clases en vivo</h1>
 
           <p class="hero-description">
             Transforma tu futuro con nuestro programa intensivo de inglés. Clases en vivo con profesores certificados, materiales premium incluidos y garantía de resultados. 
@@ -91,7 +86,11 @@
           <p class="section-kicker">¿Por qué elegirnos?</p>
           <h2>Resultados Comprobados en 9 Meses</h2>
           <p>
-            Nuestro método probado transforma estudiantes principiantes en hablantes fluidos. Cada módulo está diseñado para maximizar tu progreso y garantizar que domines el inglés de manera efectiva.
+            Nuestro método probado transforma estudiantes principiantes en hablantes fluidos. 
+            Cada módulo está diseñado para maximizar tu progreso y garantizar que domines el inglés
+             de manera efectiva.
+
+             Si te pierdes una clase, no te preocupes: todas las sesiones se graban y puedes acceder a ellas en cualquier momento. Además, nuestro equipo de soporte está siempre disponible para ayudarte a resolver cualquier duda o dificultad que puedas tener durante tu aprendizaje.
           </p>
         </div>
 
@@ -192,32 +191,38 @@
 
 .navbar {
   width: 100%;
-  padding: 18px 32px;
+  height: 64px;
+  padding: 0 20px;
   box-sizing: border-box;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .nav-left,
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
 }
 
 .nav-logo {
-  width: 110px;
-  max-width: 100%;
+  width: 68px;
+  height: auto;
   display: block;
 }
 
 .nav-link {
-  color: white;
   text-decoration: none;
   font-weight: 600;
-  font-size: 15px;
-  opacity: 0.92;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.nav-link.dark {
+  color: #0f172a;
 }
 
 .nav-link:hover {
@@ -228,10 +233,10 @@
   text-decoration: none;
   background: white;
   color: #0f172a;
-  padding: 12px 18px;
-  border-radius: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   transition: 0.2s ease;
 }
 
