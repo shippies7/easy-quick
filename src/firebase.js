@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app"
 import { getAuth, onAuthStateChanged } from "firebase/auth"
+import { getFirestore } from "firebase/firestore"
 
 const firebaseConfig = {
   apiKey: "AIzaSyBOVXBoJ65kUZsSl0JEOfFHjVCjmEe-GAc",
@@ -10,9 +11,11 @@ const firebaseConfig = {
   appId: "1:25426802631:web:a576da3249dc98ca0a0be2",
   measurementId: "G-TDZG7RD7EY"
 }
+
 const app = initializeApp(firebaseConfig)
 
 export const auth = getAuth(app)
+export const db = getFirestore(app)
 
 export function getCurrentUser() {
   return new Promise((resolve, reject) => {

@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import ClaseView from '../views/ClaseView.vue'
 import LoginView from '../views/LoginView.vue'
+import AdminView from '../views/AdminView.vue'
 import { getCurrentUser } from '../firebase'
 
 const routes = [
@@ -20,6 +21,12 @@ const routes = [
     path: '/clase',
     name: 'clase',
     component: ClaseView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin',
+    name: 'admin',
+    component: AdminView,
     meta: { requiresAuth: true }
   }
 ]
