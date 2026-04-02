@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import ClaseView from '../views/ClaseView.vue'
 import LoginView from '../views/LoginView.vue'
 import AdminView from '../views/AdminView.vue'
+import TeacherView from '../views/TeacherView.vue'
 import { getCurrentUser } from '../firebase'
 
 const routes = [
@@ -27,6 +28,12 @@ const routes = [
     path: '/admin',
     name: 'admin',
     component: AdminView,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/teacher',
+    name: 'teacher',
+    component: TeacherView,
     meta: { requiresAuth: true }
   }
 ]
