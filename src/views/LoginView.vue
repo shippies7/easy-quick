@@ -5,7 +5,7 @@
 
       <h1>Iniciar sesión</h1>
       <p class="text">
-        Ingresa tus datos para acceder a tu clase.
+        Ingresa tus datos para acceder a tu espacio.
       </p>
 
       <input
@@ -37,13 +37,45 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { auth } from '../firebase'
+import { collection, getDocs } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 
 const usuario = ref('')
 const password = ref('')
 const cargando = ref(false)
 const errorMsg = ref('')
 const router = useRouter()
+
+const normalizeEmail = (value) =>
+  String(value || '').trim().toLowerCase()
+
+async function redirectUserByRole(email) {
+  const cleanEmail = normalizeEmail(email)
+
+  const teachersSnapshot = await getDocs(collection(db, 'teachers'))
+  const teacherFound = teachersSnapshot.docs.find((docItem) => {
+    const data = docItem.data()
+    return normalizeEmail(data.email) === cleanEmail
+  })
+
+  if (teacherFound) {
+    router.push('/teacher')
+    return
+  }
+
+  const studentsSnapshot = await getDocs(collection(db, 'students'))
+  const studentFound = studentsSnapshot.docs.find((docItem) => {
+    const data = docItem.data()
+    return normalizeEmail(data.email) === cleanEmail
+  })
+
+  if (studentFound) {
+    router.push('/clase')
+    return
+  }
+
+  errorMsg.value = 'No se encontró información para este usuario.'
+}
 
 async function login() {
   errorMsg.value = ''
@@ -56,13 +88,13 @@ async function login() {
   try {
     cargando.value = true
 
-    await signInWithEmailAndPassword(
+    const result = await signInWithEmailAndPassword(
       auth,
       usuario.value.trim(),
       password.value
     )
 
-    router.push('/clase')
+    await redirectUserByRole(result.user.email)
   } catch (error) {
     console.error(error)
     errorMsg.value = 'Correo o contraseña incorrectos.'
