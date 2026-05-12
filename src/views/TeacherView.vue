@@ -29,7 +29,6 @@
       </div>
 
       <div class="main-grid">
-        <!-- IZQUIERDA -->
         <div class="left-column">
           <div class="card">
             <div class="card-header">
@@ -38,14 +37,10 @@
             </div>
 
             <div v-if="teacherGroups.length" class="group-list">
-              <div
-                v-for="group in teacherGroups"
-                :key="group.id"
-                class="group-wrapper"
-              >
+              <div v-for="group in teacherGroups" :key="group.id" class="group-wrapper">
                 <button
                   class="group-button"
-                  :class=" [
+                  :class="[
                     getGroupCardClass(getGroupDisplayBook(group)),
                     { active: selectedGroupId === group.id }
                   ]"
@@ -64,10 +59,7 @@
                 </button>
 
                 <transition name="fade-slide">
-                  <div
-                    v-if="selectedGroupId === group.id"
-                    class="group-submenu"
-                  >
+                  <div v-if="selectedGroupId === group.id" class="group-submenu">
                     <button class="submenu-btn" @click="openSection('resumen', group)">
                       Resumen
                     </button>
@@ -94,9 +86,7 @@
           </div>
         </div>
 
-        <!-- DERECHA -->
         <div class="right-column">
-          <!-- SECCIÓN ACTIVA ARRIBA -->
           <transition name="fade-slide">
             <div v-if="activeSection && activeGroup" class="card active-section-card">
               <div class="section-topbar">
@@ -114,7 +104,6 @@
                 </button>
               </div>
 
-              <!-- RESUMEN -->
               <div v-if="activeSection === 'resumen'">
                 <div class="summary-grid">
                   <div class="summary-box">
@@ -170,10 +159,7 @@
                       </p>
                     </div>
 
-                    <div
-                      class="status-pill"
-                      :class="getStatusClass(progressStatus.key)"
-                    >
+                    <div class="status-pill" :class="getStatusClass(progressStatus.key)">
                       {{ progressStatus.label }}
                     </div>
                   </div>
@@ -232,11 +218,7 @@
                         {{ savingProgress ? 'Guardando...' : 'Guardar avance real' }}
                       </button>
 
-                      <button
-                        class="ghost-btn"
-                        @click="cancelEditProgress"
-                        type="button"
-                      >
+                      <button class="ghost-btn" @click="cancelEditProgress" type="button">
                         Cancelar
                       </button>
                     </div>
@@ -244,7 +226,6 @@
                 </div>
               </div>
 
-              <!-- ALUMNOS -->
               <div v-else-if="activeSection === 'alumnos'">
                 <div v-if="getStudentsForGroup(activeGroup.id).length" class="student-list">
                   <div
@@ -268,13 +249,8 @@
                 </p>
               </div>
 
-              <!-- CLASE Y EVALUACIÓN -->
               <div v-else-if="activeSection === 'clase'">
-                <input
-                  v-model="lessonDate"
-                  type="date"
-                  class="input"
-                />
+                <input v-model="lessonDate" type="date" class="input" />
 
                 <select v-model="lessonBook" class="input">
                   <option value="">Selecciona libro</option>
@@ -321,33 +297,10 @@
                       class="input"
                     />
 
-                    <input
-                      v-model="question.options[0]"
-                      type="text"
-                      placeholder="Opción A"
-                      class="input"
-                    />
-
-                    <input
-                      v-model="question.options[1]"
-                      type="text"
-                      placeholder="Opción B"
-                      class="input"
-                    />
-
-                    <input
-                      v-model="question.options[2]"
-                      type="text"
-                      placeholder="Opción C"
-                      class="input"
-                    />
-
-                    <input
-                      v-model="question.options[3]"
-                      type="text"
-                      placeholder="Opción D"
-                      class="input"
-                    />
+                    <input v-model="question.options[0]" type="text" placeholder="Opción A" class="input" />
+                    <input v-model="question.options[1]" type="text" placeholder="Opción B" class="input" />
+                    <input v-model="question.options[2]" type="text" placeholder="Opción C" class="input" />
+                    <input v-model="question.options[3]" type="text" placeholder="Opción D" class="input" />
 
                     <select v-model.number="question.correctAnswer" class="input">
                       <option :value="0">Respuesta correcta: A</option>
@@ -369,7 +322,6 @@
             </div>
           </transition>
 
-          <!-- DASHBOARD ABAJO -->
           <div class="card">
             <div class="card-header">
               <h3>Dashboard</h3>
@@ -392,28 +344,37 @@
 
               <input
                 type="file"
-                accept="image/*"
-                @change="handleImageUpload"
+                @change="handleFileUpload"
                 class="input"
               />
 
-              <p v-if="uploadingImage" class="uploading-text">Subiendo imagen...</p>
+              <p v-if="uploadingFile" class="uploading-text">Subiendo archivo...</p>
 
               <img
-                v-if="postImageUrl"
-                :src="postImageUrl"
+                v-if="postFileUrl && isImageFile(postFileType)"
+                :src="postFileUrl"
                 alt="Vista previa"
                 class="post-image preview-image"
               />
 
+              <a
+                v-else-if="postFileUrl"
+                :href="postFileUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="file-link"
+              >
+                Descargar archivo: {{ postFileName || 'Archivo adjunto' }}
+              </a>
+
               <button
                 class="primary-btn"
                 @click="createPost"
-                :disabled="creatingPost || uploadingImage"
+                :disabled="creatingPost || uploadingFile"
               >
                 {{
-                  uploadingImage
-                    ? 'Esperando imagen...'
+                  uploadingFile
+                    ? 'Esperando archivo...'
                     : creatingPost
                     ? 'Publicando...'
                     : 'Publicar aviso'
@@ -437,19 +398,25 @@
                 <p class="post-content">{{ post.content }}</p>
 
                 <img
-                  v-if="post.imageUrl"
-                  :src="post.imageUrl"
+                  v-if="getPostFileUrl(post) && isImageFile(getPostFileType(post))"
+                  :src="getPostFileUrl(post)"
                   alt="Imagen de publicación"
                   class="post-image"
                 />
 
+                <a
+                  v-else-if="getPostFileUrl(post)"
+                  :href="getPostFileUrl(post)"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="file-link"
+                >
+                  Descargar archivo: {{ post.fileName || 'Archivo adjunto' }}
+                </a>
+
                 <div class="post-footer">
                   <span>{{ post.groupCode || selectedGroupData?.groupCode || 'Grupo' }}</span>
-                  <button
-                    class="comment-pill-btn"
-                    @click="toggleComments(post.id)"
-                    type="button"
-                  >
+                  <button class="comment-pill-btn" @click="toggleComments(post.id)" type="button">
                     <span class="arrow-icon">{{ expandedComments[post.id] ? '▼' : '▶' }}</span>
                     <span>{{ getRootCommentsForPost(post.id).length }} comentarios</span>
                   </button>
@@ -457,10 +424,7 @@
 
                 <transition name="fade-slide">
                   <div v-if="expandedComments[post.id]" class="comments-box">
-                    <div
-                      v-if="getRootCommentsForPost(post.id).length"
-                      class="comments-list"
-                    >
+                    <div v-if="getRootCommentsForPost(post.id).length" class="comments-list">
                       <div
                         v-for="comment in getRootCommentsForPost(post.id)"
                         :key="comment.id"
@@ -474,10 +438,7 @@
                         <p v-if="comment.studentCode" class="comment-code">{{ comment.studentCode }}</p>
                         <p class="comment-text">{{ comment.content }}</p>
 
-                        <button
-                          class="reply-toggle-btn"
-                          @click="toggleReplyBox(comment.id)"
-                        >
+                        <button class="reply-toggle-btn" @click="toggleReplyBox(comment.id)">
                           {{ replyBoxes[comment.id] ? 'Cancelar' : 'Responder' }}
                         </button>
 
@@ -551,7 +512,7 @@ const router = useRouter()
 
 const cerrandoSesion = ref(false)
 const creatingPost = ref(false)
-const uploadingImage = ref(false)
+const uploadingFile = ref(false)
 const creatingLessonPack = ref(false)
 const creatingReply = ref(false)
 const savingProgress = ref(false)
@@ -580,7 +541,10 @@ const replyInputs = reactive({})
 
 const postTitle = ref('')
 const postContent = ref('')
-const postImageUrl = ref('')
+const postFileUrl = ref('')
+const postFileName = ref('')
+const postFileType = ref('')
+const postResourceType = ref('')
 
 const lessonDate = ref('')
 const lessonBook = ref('')
@@ -696,6 +660,20 @@ const progressStatus = computed(() => {
     message: 'Hace falta poner atención, pero confiamos en que se pondrán al corriente.'
   }
 })
+
+function isImageFile(fileType) {
+  return String(fileType || '').startsWith('image/')
+}
+
+function getPostFileUrl(post) {
+  return post.fileUrl || post.imageUrl || ''
+}
+
+function getPostFileType(post) {
+  if (post.fileType) return post.fileType
+  if (post.imageUrl) return 'image/'
+  return ''
+}
 
 function getTimestamp(value) {
   if (!value) return 0
@@ -816,14 +794,6 @@ function getBookOrder(book) {
 
 function getGlobalUnitIndex(book, unit) {
   return getBookOrder(book) * 16 + Number(unit || 1)
-}
-
-function getDisplayUnit(group) {
-  return group?.actualUnit || group?.currentUnit || 1
-}
-
-function getGroupDisplayUnit(group) {
-  return group?.actualUnit || group?.currentUnit || getExpectedProgress(group).unit || 1
 }
 
 function getGroupDisplayBook(group) {
@@ -1006,18 +976,18 @@ function goToHistory(group) {
   router.push(`/teacher-history/${group.id}`)
 }
 
-async function handleImageUpload(event) {
+async function handleFileUpload(event) {
   try {
     const file = event.target.files[0]
     if (!file) return
 
-    uploadingImage.value = true
+    uploadingFile.value = true
 
     const formData = new FormData()
     formData.append('file', file)
     formData.append('upload_preset', 'teacher_posts')
 
-    const response = await fetch('https://api.cloudinary.com/v1_1/dt8mqclpf/image/upload', {
+    const response = await fetch('https://api.cloudinary.com/v1_1/dt8mqclpf/auto/upload', {
       method: 'POST',
       body: formData
     })
@@ -1026,16 +996,19 @@ async function handleImageUpload(event) {
 
     if (!response.ok || !data.secure_url) {
       console.error('Respuesta de Cloudinary:', data)
-      alert('No se pudo subir la imagen')
+      alert('No se pudo subir el archivo')
       return
     }
 
-    postImageUrl.value = data.secure_url
+    postFileUrl.value = data.secure_url
+    postFileName.value = file.name
+    postFileType.value = file.type || ''
+    postResourceType.value = data.resource_type || ''
   } catch (error) {
-    console.error('Error al subir imagen:', error)
-    alert('Error al subir la imagen')
+    console.error('Error al subir archivo:', error)
+    alert('Error al subir el archivo')
   } finally {
-    uploadingImage.value = false
+    uploadingFile.value = false
   }
 }
 
@@ -1121,8 +1094,8 @@ async function createPost() {
       return
     }
 
-    if (uploadingImage.value) {
-      alert('Espera a que termine de subir la imagen')
+    if (uploadingFile.value) {
+      alert('Espera a que termine de subir el archivo')
       return
     }
 
@@ -1135,14 +1108,23 @@ async function createPost() {
       groupCode: selectedGroupData.value.groupCode || '',
       title: postTitle.value.trim(),
       content: postContent.value.trim(),
-      imageUrl: postImageUrl.value.trim() || '',
+
+      fileUrl: postFileUrl.value.trim() || '',
+      fileName: postFileName.value.trim() || '',
+      fileType: postFileType.value.trim() || '',
+      resourceType: postResourceType.value.trim() || '',
+      imageUrl: isImageFile(postFileType.value) ? postFileUrl.value.trim() : '',
+
       commentCount: 0,
       createdAt: new Date()
     })
 
     postTitle.value = ''
     postContent.value = ''
-    postImageUrl.value = ''
+    postFileUrl.value = ''
+    postFileName.value = ''
+    postFileType.value = ''
+    postResourceType.value = ''
 
     await loadPosts()
   } catch (error) {
@@ -1551,10 +1533,6 @@ html, body, #app {
   background: #f8fafc;
 }
 
-.active-section-card {
-  margin-bottom: 0;
-}
-
 .section-topbar {
   display: flex;
   justify-content: space-between;
@@ -1852,6 +1830,24 @@ html, body, #app {
 .preview-image {
   max-height: 260px;
   object-fit: cover;
+}
+
+.file-link {
+  display: inline-flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #d8dbe2;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  color: #1d4ed8;
+  font-weight: 700;
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.file-link:hover {
+  background: #f8fafc;
 }
 
 .post-footer {
