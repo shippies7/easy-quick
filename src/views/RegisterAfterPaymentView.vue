@@ -52,9 +52,10 @@
             </label>
 
             <p v-if="!form.wantsToAddDiagnostic" class="diagnostic-help">
-              Si no sabes tu nivel, no pasa nada. <b>Si eres principiante no es necesario realizar el diagnóstico para completar tu registro.</b>
+              Si no sabes tu nivel, no pasa nada.
+              <b>Si eres principiante no es necesario realizar el diagnóstico para completar tu registro.</b>
               <RouterLink to="/diagnostico">
-                (Si consideras que quieres hacerlo hacerlo, haz clic aquí.)
+                (Si aun así quieres hacerlo, haz clic aquí.)
               </RouterLink>
             </p>
           </div>
@@ -73,7 +74,7 @@
         </div>
 
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Creando cuenta...' : 'Crear mi cuenta' }}
+          {{ loading ? 'Validando pago...' : 'Crear mi cuenta' }}
         </button>
 
         <p v-if="message" :class="['message', messageType]">
@@ -92,8 +93,7 @@
 import { ref } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { auth } from '../firebase'
 
 const router = useRouter()
 
@@ -114,7 +114,7 @@ const groupOptions = {
   'martes-jueves-8pm': {
     name: 'Martes y jueves',
     schedule: '8:00 pm a 9:30 pm',
-    level: 'Nuevo grupo',
+    level: 'Principiantes',
     status: 'pending_admin_assignment'
   },
   'lmv-8pm': {
@@ -123,6 +123,24 @@ const groupOptions = {
     level: 'Avanzado B1 en adelante',
     status: 'pending_admin_assignment'
   }
+}
+
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Ocurrió un error.')
+  }
+
+  return data
 }
 
 async function handleRegister() {
@@ -136,26 +154,24 @@ async function handleRegister() {
     const password = form.value.password
     const selectedGroup = groupOptions[form.value.groupPreference]
 
+    await postJson('/api/verify-payment', {
+      email: cleanEmail
+    })
+
     const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password)
 
     await updateProfile(userCredential.user, {
       displayName: cleanName
     })
 
-    await setDoc(doc(db, 'students', userCredential.user.uid), {
+    await postJson('/api/complete-registration', {
+      uid: userCredential.user.uid,
       name: cleanName,
       email: cleanEmail,
-      role: 'student',
-      status: 'active',
-      paymentStatus: 'pending_manual_review',
-      source: 'stripe_payment_link',
       groupPreferenceId: form.value.groupPreference,
       groupPreference: selectedGroup,
-      assignedGroupId: null,
-      assignedByAdmin: false,
       diagnosticResult: form.value.wantsToAddDiagnostic ? form.value.diagnosticResult : null,
-      diagnosticSubmitted: form.value.wantsToAddDiagnostic,
-      createdAt: serverTimestamp()
+      diagnosticSubmitted: form.value.wantsToAddDiagnostic
     })
 
     message.value = 'Cuenta creada correctamente. Te estamos redirigiendo a tu espacio.'
@@ -172,7 +188,7 @@ async function handleRegister() {
     } else if (error.code === 'auth/weak-password') {
       message.value = 'La contraseña debe tener al menos 6 caracteres.'
     } else {
-      message.value = 'Ocurrió un error al crear tu cuenta. Intenta nuevamente.'
+      message.value = error.message || 'Ocurrió un error al crear tu cuenta. Intenta nuevamente.'
     }
 
     messageType.value = 'error'
