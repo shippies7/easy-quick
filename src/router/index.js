@@ -4,6 +4,9 @@ import ClaseView from '../views/ClaseView.vue'
 import LoginView from '../views/LoginView.vue'
 import AdminView from '../views/AdminView.vue'
 import TeacherView from '../views/TeacherView.vue'
+import PlanesView from '../views/PlanesView.vue'
+import RegisterAfterPaymentView from '../views/RegisterAfterPaymentView.vue'
+import DiagnosticoView from '../views/DiagnosticoView.vue'
 import { getCurrentUser, db } from '../firebase'
 import { collection, getDocs } from 'firebase/firestore'
 
@@ -38,6 +41,24 @@ const routes = [
     name: 'home',
     component: HomeView,
     meta: { title: 'Easy & Quick School' }
+  },
+  {
+    path: '/planes',
+    name: 'planes',
+    component: PlanesView,
+    meta: { title: 'Planes | Easy & Quick School' }
+  },
+  {
+    path: '/registro-pagado',
+    name: 'registro-pagado',
+    component: RegisterAfterPaymentView,
+    meta: { title: 'Registro | Easy & Quick School' }
+  },
+  {
+    path: '/diagnostico',
+    name: 'diagnostico',
+    component: DiagnosticoView,
+    meta: { title: 'Examen diagnóstico | Easy & Quick School' }
   },
   {
     path: '/login',
@@ -89,13 +110,8 @@ router.beforeEach(async (to) => {
   if (user && (to.path === '/teacher' || to.path === '/clase')) {
     const role = await getUserRoleByEmail(user.email)
 
-    if (role === 'teacher' && to.path === '/clase') {
-      return '/teacher'
-    }
-
-    if (role === 'student' && to.path === '/teacher') {
-      return '/clase'
-    }
+    if (role === 'teacher' && to.path === '/clase') return '/teacher'
+    if (role === 'student' && to.path === '/teacher') return '/clase'
   }
 })
 
