@@ -134,7 +134,7 @@ async function postJson(url, body) {
     body: JSON.stringify(body)
   })
 
-  const data = await response.json()
+  const data = await response.json().catch(() => ({}))
 
   if (!response.ok) {
     throw new Error(data.error || 'Ocurrió un error.')
@@ -153,6 +153,10 @@ async function handleRegister() {
     const cleanEmail = form.value.email.trim().toLowerCase()
     const password = form.value.password
     const selectedGroup = groupOptions[form.value.groupPreference]
+
+    if (!selectedGroup) {
+      throw new Error('Selecciona un horario de preferencia.')
+    }
 
     await postJson('/api/verify-payment', {
       email: cleanEmail
