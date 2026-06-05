@@ -74,7 +74,7 @@
         </div>
 
         <button type="submit" :disabled="loading">
-          {{ loading ? 'Validando pago...' : 'Crear mi cuenta' }}
+          {{ loading ? 'Validando pago...' : 'Crear mi cuenta — versión segura' }}
         </button>
 
         <p v-if="message" :class="['message', messageType]">

@@ -56,7 +56,7 @@ export default async function handler(req, res) {
     ) {
       return res.status(403).json({
         valid: false,
-        error: "Este pago no está disponible para crear una cuenta."
+        error: "Este pago ya fue utilizado para crear una cuenta. Si ya te registraste, inicia sesión con ese correo."
       })
     }
 
