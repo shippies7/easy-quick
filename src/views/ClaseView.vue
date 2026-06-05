@@ -938,25 +938,7 @@ function getTimeLabel(classTime) {
   return labels[classTime] || classTime || ''
 }
 
-const canShowZoomButton = computed(() => {
-  currentMexicoDate.value
-
-  if (!groupData.scheduleType || !groupData.classTime) return false
-
-  const nowParts = getMexicoNowParts()
-  const allowedDays = getAllowedDays(groupData.scheduleType)
-  const classStartMinutes = getClassStartMinutes(groupData.classTime)
-  const durationMinutes = getClassDurationMinutes(groupData.scheduleType)
-
-  if (!allowedDays.includes(nowParts.weekday)) return false
-  if (classStartMinutes === undefined) return false
-
-  const nowMinutes = nowParts.hour * 60 + nowParts.minute
-  const startWindow = classStartMinutes - 15
-  const endWindow = classStartMinutes + durationMinutes + 15
-
-  return nowMinutes >= startWindow && nowMinutes <= endWindow
-})
+const canShowZoomButton = computed(() => true)
 
 const nextClassText = computed(() => {
   currentMexicoDate.value
