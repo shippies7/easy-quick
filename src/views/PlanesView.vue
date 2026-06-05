@@ -1,158 +1,169 @@
+Sí che, perdón, ya te entendí bien: **horarios en una sola línea, uno al lado del otro, más compactos, primero Principiantes y luego Avanzado**. Reemplaza todo `PlanesView.vue` por este: 
+
+```vue
 <template>
-  <main class="planes-page">
-    <section class="hero" id="top">
-      <p class="eyebrow">Quick & Easy</p>
-      <h1>Elige tu plan de inglés</h1>
-      <p class="subtitle">
-        Curso de inglés de 9 meses con metodología Cambridge, materiales Interchange incluidos,
-        clases en vivo, práctica constante y acceso a plataforma educativa digital.
-      </p>
-
-      <a class="scroll-button" href="#planes">Ver planes de pago</a>
-
-      <div class="promo-box">
-        <label for="promoCode">¿Tienes un código promocional?</label>
-        <div class="promo-row">
-          <input
-            id="promoCode"
-            v-model="promoCode"
-            type="text"
-            placeholder="Escribe tu código aquí"
-          />
-          <button @click="applyCode">Aplicar</button>
-        </div>
-        <p class="promo-note">{{ promoMessage }}</p>
+  <div>
+    <header class="navbar">
+      <div class="nav-left">
+        <img src="/logo.png" alt="Quick & Easy" class="nav-logo" />
       </div>
-    </section>
 
-    <section class="includes-section">
-      <div class="section-heading">
-        <p class="eyebrow">Qué incluye</p>
-        <h2>Un programa estructurado para avanzar con claridad</h2>
-        <p>
-          El curso trabaja comprensión, expresión oral, vocabulario, pronunciación y estructuras
-          del inglés en contextos prácticos y situaciones cotidianas.
+      <div class="nav-right">
+        <router-link to="/" class="nav-link dark">Home</router-link>
+        <router-link to="/planes" class="nav-link dark">Planes</router-link>
+        <router-link to="/diagnostico" class="nav-link dark">Examen diagnóstico</router-link>
+        <router-link to="/login" class="nav-btn">Iniciar sesión</router-link>
+      </div>
+    </header>
+
+    <main class="planes-page">
+      <section class="hero" id="top">
+        <p class="eyebrow">Quick & Easy</p>
+        <h1>Elige tu plan de inglés</h1>
+        <p class="subtitle">
+          Curso de inglés de 9 meses con metodología Cambridge, materiales Interchange incluidos,
+          clases en vivo, práctica constante y acceso a plataforma educativa digital.
         </p>
-      </div>
 
-      <div class="includes-grid">
-        <div class="include-card" v-for="item in includes" :key="item.title">
-          <span>{{ item.icon }}</span>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.text }}</p>
+        <div class="promo-box">
+          <label for="promoCode">¿Tienes un código promocional?</label>
+          <div class="promo-row">
+            <input
+              id="promoCode"
+              v-model="promoCode"
+              type="text"
+              placeholder="Escribe tu código aquí"
+            />
+            <button @click="applyCode">Aplicar</button>
+          </div>
+          <p class="promo-note">{{ promoMessage }}</p>
         </div>
-      </div>
+      </section>
 
-      <div class="center-action">
-        <a class="secondary-button" href="#planes">Ir a planes de pago</a>
-      </div>
-    </section>
+      <section class="schedule-section">
+        <div class="section-heading compact-heading">
+          <h2>Horarios disponibles</h2>
+          <p>Revisa que el horario sea compatible contigo antes de realizar tu pago.</p>
+        </div>
 
-    <section class="program-section">
-      <div class="section-heading">
-        <p class="eyebrow">Programa de 9 meses</p>
-        <h2>De las bases a la confianza al hablar</h2>
-      </div>
+        <div class="schedule-grid">
+          <article class="schedule-card">
+            <p class="badge">Principiantes</p>
+            <h3>Martes y jueves</h3>
+            <p class="schedule-time">8:00 pm a 9:30 pm</p>
+            <p class="schedule-note">Ideal para nuevos estudiantes.</p>
+          </article>
 
-      <div class="stages-grid">
-        <article class="stage-card">
-          <strong>Etapa 1</strong>
-          <h3>Construcción de las bases</h3>
-          <p>Presentarte, hablar de ti, describir personas, objetos y lugares, y formular preguntas básicas.</p>
-        </article>
+          <article class="schedule-card">
+            <p class="badge">Avanzado</p>
+            <h3>Lunes, miércoles y viernes</h3>
+            <p class="schedule-time">8:00 pm a 9:00 pm</p>
+            <p class="schedule-note">Recomendado para nivel B1 en adelante.</p>
+          </article>
+        </div>
+      </section>
 
-        <article class="stage-card">
-          <strong>Etapa 2</strong>
-          <h3>Inglés para el día a día</h3>
-          <p>Rutinas, horarios, preferencias, ubicaciones y conversaciones cotidianas más fluidas.</p>
-        </article>
+      <section class="plans-section" id="planes">
+        <div class="section-heading">
+          <h2>Planes de pago</h2>
+        </div>
 
-        <article class="stage-card">
-          <strong>Etapa 3</strong>
-          <h3>Desarrollo de ideas</h3>
-          <p>Experiencias pasadas, planes futuros, eventos y conversaciones más completas.</p>
-        </article>
+        <div class="plans-grid">
+          <article class="plan-card highlighted">
+            <p class="badge">Curso completo</p>
+            <h2>Acceso por 9 meses</h2>
 
-        <article class="stage-card">
-          <strong>Etapa 4</strong>
-          <h3>Confianza al hablar</h3>
-          <p>Comprensión amplia, pronunciación, entonación, vocabulario y uso del inglés en distintos contextos.</p>
-        </article>
-      </div>
-    </section>
+            <p class="old-price" v-if="currentPlan.hasDiscount">$4,500 MXN</p>
+            <p class="price">${{ currentPlan.fullPrice }} MXN</p>
 
-    <section class="schedule-section">
-      <div class="section-heading">
-        <p class="eyebrow">Horarios disponibles</p>
-        <h2>Revisa los horarios antes de inscribirte</h2>
-        <p>
-          Actualmente las clases disponibles se imparten en los siguientes horarios.
-          Tómalos en cuenta antes de realizar tu pago.
-        </p>
-      </div>
+            <p class="description">
+              Cubre el programa completo de 9 meses con un solo pago.
+            </p>
 
-      <div class="schedule-grid">
-        <article class="schedule-card">
-          <p class="badge">Avanzado</p>
-          <h3>Lunes, miércoles y viernes</h3>
-          <p class="schedule-time">8:00 pm a 9:00 pm</p>
-          <p class="schedule-note">Grupo recomendado para estudiantes con nivel B1 en adelante.</p>
-        </article>
+            <button class="primary-button" @click="goToPayment(currentPlan.fullLink)">
+              Pagar curso completo
+            </button>
 
-        <article class="schedule-card">
-          <p class="badge">Nuevo grupo</p>
-          <h3>Martes y jueves</h3>
-          <p class="schedule-time">8:00 pm a 9:30 pm</p>
-          <p class="schedule-note">Grupo próximo a iniciar el 30 de Junio. Ideal para nuevos estudiantes.</p>
-        </article>
-      </div>
-    </section>
+            <button class="outline-button" @click="goToPayment(currentPlan.twoPaymentsLink)">
+              Pagar en 2 exhibiciones de ${{ currentPlan.twoPaymentsPrice }} MXN
+            </button>
+          </article>
 
-    <section class="plans-section" id="planes">
-      <div class="section-heading">
-        <p class="eyebrow">Planes de pago</p>
-        <h2>Elige cómo quieres iniciar</h2>
-      </div>
+          <article class="plan-card">
+            <p class="badge">Plan mensual</p>
+            <h2>Acceso mensual</h2>
 
-      <div class="plans-grid">
-        <article class="plan-card highlighted">
-          <p class="badge">Curso completo</p>
-          <h2>Acceso por 9 meses</h2>
+            <p class="old-price" v-if="currentPlan.hasDiscount">$800 MXN / mes</p>
+            <p class="price">${{ currentPlan.monthlyPrice }} MXN / mes</p>
 
-          <p class="old-price" v-if="currentPlan.hasDiscount">$4,500 MXN</p>
-          <p class="price">${{ currentPlan.fullPrice }} MXN</p>
+            <p class="description">
+              Paga mes a mes durante 9 meses y mantén activo tu acceso mientras avanzas.
+            </p>
 
-          <p class="description">
-            Cubre el programa completo de 9 meses con un solo pago.
+            <button class="primary-button" @click="goToPayment(currentPlan.monthlyLink)">
+              Elegir plan mensual
+            </button>
+          </article>
+        </div>
+      </section>
+
+      <section class="includes-section">
+        <div class="section-heading">
+          <p class="eyebrow">Qué incluye</p>
+          <h2>Un programa estructurado para avanzar con claridad</h2>
+          <p>
+            El curso trabaja comprensión, expresión oral, vocabulario, pronunciación y estructuras
+            del inglés en contextos prácticos y situaciones cotidianas.
           </p>
+        </div>
 
-          <button class="primary-button" @click="goToPayment(currentPlan.fullLink)">
-            Pagar curso completo
-          </button>
+        <div class="includes-grid">
+          <div class="include-card" v-for="item in includes" :key="item.title">
+            <span>{{ item.icon }}</span>
+            <h3>{{ item.title }}</h3>
+            <p>{{ item.text }}</p>
+          </div>
+        </div>
 
-          <button class="outline-button" @click="goToPayment(currentPlan.twoPaymentsLink)">
-            Pagar en 2 exhibiciones de ${{ currentPlan.twoPaymentsPrice }} MXN
-          </button>
-        </article>
+        <div class="center-action">
+          <a class="secondary-button" href="#planes">Ir a planes de pago</a>
+        </div>
+      </section>
 
-        <article class="plan-card">
-          <p class="badge">Plan mensual</p>
-          <h2>Acceso mensual</h2>
+      <section class="program-section">
+        <div class="section-heading">
+          <p class="eyebrow">Programa de 9 meses</p>
+          <h2>De las bases a la confianza al hablar</h2>
+        </div>
 
-          <p class="old-price" v-if="currentPlan.hasDiscount">$800 MXN / mes</p>
-          <p class="price">${{ currentPlan.monthlyPrice }} MXN / mes</p>
+        <div class="stages-grid">
+          <article class="stage-card">
+            <strong>Etapa 1</strong>
+            <h3>Construcción de las bases</h3>
+            <p>Presentarte, hablar de ti, describir personas, objetos y lugares, y formular preguntas básicas.</p>
+          </article>
 
-          <p class="description">
-            Paga mes a mes durante 9 meses y mantén activo tu acceso mientras avanzas.
-          </p>
+          <article class="stage-card">
+            <strong>Etapa 2</strong>
+            <h3>Inglés para el día a día</h3>
+            <p>Rutinas, horarios, preferencias, ubicaciones y conversaciones cotidianas más fluidas.</p>
+          </article>
 
-          <button class="primary-button" @click="goToPayment(currentPlan.monthlyLink)">
-            Elegir plan mensual
-          </button>
-        </article>
-      </div>
-    </section>
-  </main>
+          <article class="stage-card">
+            <strong>Etapa 3</strong>
+            <h3>Desarrollo de ideas</h3>
+            <p>Experiencias pasadas, planes futuros, eventos y conversaciones más completas.</p>
+          </article>
+
+          <article class="stage-card">
+            <strong>Etapa 4</strong>
+            <h3>Confianza al hablar</h3>
+            <p>Comprensión amplia, pronunciación, entonación, vocabulario y uso del inglés en distintos contextos.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
 </template>
 
 <script setup>
@@ -203,36 +214,12 @@ const plans = {
 const currentPlan = ref(plans.DEFAULT)
 
 const includes = [
-  {
-    icon: '🎥',
-    title: 'Clases en vivo',
-    text: 'Sesiones en vivo con profesores calificados y acompañamiento durante el proceso.'
-  },
-  {
-    icon: '📚',
-    title: 'Material Cambridge',
-    text: 'Uso de libros Interchange y materiales reconocidos internacionalmente.'
-  },
-  {
-    icon: '💻',
-    title: 'Plataforma educativa digital',
-    text: 'Acceso organizado a clases, materiales, comunicados y recursos del programa.'
-  },
-  {
-    icon: '▶️',
-    title: 'Clases grabadas',
-    text: 'Grabaciones disponibles para quienes no puedan asistir a una clase en vivo.'
-  },
-  {
-    icon: '🗣️',
-    title: 'Práctica oral constante',
-    text: 'Conversación aplicada, pronunciación y actividades enfocadas en el uso real del idioma.'
-  },
-  {
-    icon: '🌱',
-    title: 'Grupos por nivel',
-    text: 'Grupos para principiantes y estudiantes avanzados, según el avance del alumno.'
-  }
+  { icon: '🎥', title: 'Clases en vivo', text: 'Sesiones en vivo con profesores calificados y acompañamiento durante el proceso.' },
+  { icon: '📚', title: 'Material Cambridge', text: 'Uso de libros Interchange y materiales reconocidos internacionalmente.' },
+  { icon: '💻', title: 'Plataforma educativa digital', text: 'Acceso organizado a clases, materiales, comunicados y recursos del programa.' },
+  { icon: '▶️', title: 'Clases grabadas', text: 'Grabaciones disponibles para quienes no puedan asistir a una clase en vivo.' },
+  { icon: '🗣️', title: 'Práctica oral constante', text: 'Conversación aplicada, pronunciación y actividades enfocadas en el uso real del idioma.' },
+  { icon: '🌱', title: 'Grupos por nivel', text: 'Grupos para principiantes y estudiantes avanzados, según el avance del alumno.' }
 ]
 
 function applyCode() {
@@ -260,9 +247,61 @@ function goToPayment(link) {
 </script>
 
 <style scoped>
+.navbar {
+  width: 100%;
+  height: 64px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.nav-left,
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.nav-logo {
+  width: 68px;
+  height: auto;
+  display: block;
+}
+
+.nav-link {
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  color: #0f172a;
+  transition: 0.2s;
+}
+
+.nav-link:hover {
+  color: #1e3a8a;
+}
+
+.nav-btn {
+  text-decoration: none;
+  background: #0f172a;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.nav-btn:hover {
+  opacity: 0.9;
+}
+
 .planes-page {
   min-height: 100vh;
-  padding: 80px 24px;
+  padding: 42px 24px 80px;
   background:
     radial-gradient(circle at top left, rgba(211, 32, 65, 0.12), transparent 35%),
     radial-gradient(circle at top right, rgba(21, 45, 91, 0.16), transparent 35%),
@@ -273,7 +312,7 @@ function goToPayment(link) {
 
 .hero {
   max-width: 900px;
-  margin: 0 auto 56px;
+  margin: 0 auto 30px;
   text-align: center;
 }
 
@@ -301,22 +340,10 @@ h1 {
   line-height: 1.6;
 }
 
-.scroll-button,
-.secondary-button {
-  display: inline-block;
-  margin-top: 26px;
-  padding: 14px 24px;
-  border-radius: 999px;
-  background: #d32041;
-  color: white;
-  font-weight: 800;
-  text-decoration: none;
-}
-
 .promo-box {
-  margin: 32px auto 0;
+  margin: 26px auto 0;
   max-width: 580px;
-  padding: 24px;
+  padding: 22px;
   background: #f7f9ff;
   border: 1px solid rgba(21, 45, 91, 0.12);
   border-radius: 24px;
@@ -361,79 +388,62 @@ h1 {
 .program-section,
 .schedule-section,
 .plans-section {
-  max-width: 1150px;
-  margin: 0 auto 56px;
+  max-width: 900px;
+  margin: 0 auto 28px;
+}
+
+.schedule-section {
+  margin-bottom: 22px;
 }
 
 .section-heading {
   max-width: 780px;
-  margin: 0 auto 28px;
+  margin: 0 auto 22px;
   text-align: center;
+}
+
+.compact-heading {
+  margin-bottom: 14px;
 }
 
 .section-heading h2 {
   margin: 0;
-  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  font-size: clamp(1.65rem, 3vw, 2.35rem);
 }
 
 .section-heading p {
   color: #40506b;
-  line-height: 1.6;
+  line-height: 1.5;
+  margin-bottom: 0;
 }
 
-.includes-grid,
-.stages-grid,
 .schedule-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.stages-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.schedule-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
-}
-
-.include-card,
-.stage-card,
-.schedule-card,
-.plan-card {
-  background: #ffffff;
-  border: 1px solid rgba(21, 45, 91, 0.1);
-  border-radius: 24px;
-  padding: 24px;
-  box-shadow: 0 12px 30px rgba(21, 45, 91, 0.08);
+  gap: 14px;
 }
 
 .schedule-card {
-  padding: 28px;
+  background: #ffffff;
+  border: 1px solid rgba(21, 45, 91, 0.1);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 24px rgba(21, 45, 91, 0.07);
 }
 
-.include-card span {
-  font-size: 1.8rem;
+.schedule-card .badge {
+  margin-bottom: 8px;
 }
 
-.include-card h3,
-.stage-card h3,
 .schedule-card h3 {
-  margin: 14px 0 10px;
+  margin: 0 0 4px;
   color: #152d5b;
-}
-
-.include-card p,
-.stage-card p {
-  margin: 0;
-  color: #40506b;
-  line-height: 1.55;
+  font-size: 0.98rem;
 }
 
 .schedule-time {
-  margin: 0 0 12px;
-  font-size: 1.3rem;
+  margin: 0 0 4px;
+  font-size: 0.98rem;
   font-weight: 900;
   color: #152d5b;
 }
@@ -441,21 +451,38 @@ h1 {
 .schedule-note {
   margin: 0;
   color: #40506b;
-  line-height: 1.55;
+  line-height: 1.35;
+  font-size: 0.82rem;
 }
 
-.stage-card strong {
-  color: #d32041;
-}
-
-.center-action {
-  text-align: center;
+.plans-grid,
+.includes-grid,
+.stages-grid {
+  display: grid;
+  gap: 18px;
 }
 
 .plans-grid {
-  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
+}
+
+.includes-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.stages-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.include-card,
+.stage-card,
+.plan-card {
+  background: #ffffff;
+  border: 1px solid rgba(21, 45, 91, 0.1);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(21, 45, 91, 0.08);
 }
 
 .plan-card {
@@ -533,22 +560,87 @@ h1 {
   border-color: #d32041;
 }
 
+.include-card span {
+  font-size: 1.8rem;
+}
+
+.include-card h3,
+.stage-card h3 {
+  margin: 8px 0 6px;
+  color: #152d5b;
+  font-size: 1.05rem;
+}
+
+.include-card p,
+.stage-card p {
+  margin: 0;
+  color: #40506b;
+  line-height: 1.55;
+}
+
+.stage-card strong {
+  color: #d32041;
+}
+
+.center-action {
+  text-align: center;
+}
+
+.secondary-button {
+  display: inline-block;
+  margin-top: 26px;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: #d32041;
+  color: white;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 @media (max-width: 980px) {
   .includes-grid,
   .stages-grid,
-  .schedule-grid,
   .plans-grid {
     grid-template-columns: 1fr;
   }
+
+  .schedule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (max-width: 800px) {
+@media (max-width: 700px) {
   .planes-page {
-    padding: 56px 18px;
+    padding: 34px 18px 64px;
   }
 
   .promo-row {
     flex-direction: column;
   }
+
+  .schedule-grid,
+  .plans-grid,
+  .includes-grid,
+  .stages-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .navbar {
+    height: auto;
+    padding: 14px 18px;
+    align-items: flex-start;
+  }
+
+  .nav-right {
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .nav-link,
+  .nav-btn {
+    font-size: 13px;
+  }
 }
 </style>
+```

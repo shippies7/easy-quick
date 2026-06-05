@@ -6,14 +6,22 @@
   </div>
 
   <div class="nav-right">
-    <router-link to="/" class="nav-link dark">
-      Home
-    </router-link>
+  <router-link to="/" class="nav-link dark">
+    Home
+  </router-link>
 
-    <router-link to="/login" class="nav-btn">
-      Iniciar sesión
-    </router-link>
-  </div>
+  <router-link to="/planes" class="nav-link dark">
+    Planes
+  </router-link>
+
+  <router-link to="/diagnostico" class="nav-link dark">
+    Examen diagnóstico
+  </router-link>
+
+  <router-link to="/login" class="nav-btn">
+    Iniciar sesión
+  </router-link>
+</div>
 </header>
 
     <main>
@@ -24,26 +32,35 @@
           <h1>Domina el inglés <br>en 9 meses con clases en vivo</h1>
 
           <p class="hero-description">
-            Transforma tu futuro con nuestro programa intensivo de inglés. Clases en vivo con profesores certificados, materiales premium incluidos y garantía de resultados. 
+           Con metodología Cambridge, <b>los materiales Interchange están incluidos al inscribirte.  </b>
+           <br> <br> <b>Clases en vivo en nuestra propia plataforma digital</b>
+            y profesores certificados.
+            <br> <br> <b>Si te pierdes una clase, no te preocupes: </b>todas las sesiones se graban y puedes acceder a ellas 
+            en cualquier momento. Además, nuestros profesores están siempre disponible para ayudarte a resolver cualquier 
+            duda o dificultad que puedas tener durante tu aprendizaje.
+             <br> <br> Con nuestro método probado, transformarás tu inglés 
+             dominando conversaciones reales. Mejora tu pronunciación y gana confianza para hablar con fluidez en cualquier situación.
+              
+            
             <br>¡No esperes más para hablar inglés con confianza!
           </p>
 
           <div class="pricing-highlight">
             <div class="price-tag">
-              <span class="original-price">$4,200</span>
-              <span class="current-price">$2,500</span>
-              <span class="price-note">Precio especial por tiempo limitado</span>
+              <span class="original-price">$4,500</span>
+             
+              <span class="price-note">Pregunta por promociones</span>
             </div>
           </div>
 
           <div class="hero-actions">
             <a
-              href="https://wa.me/5210000000000"
+              href="https://easyquickschool.com/planes"
               target="_blank"
               rel="noopener noreferrer"
               class="primary-btn"
             >
-              🚀 Reservar mi lugar ahora
+              🚀 Iniciar mis clases ahora
             </a>
         
           </div>
@@ -153,23 +170,24 @@
         <div class="cta-card">
           <p class="section-kicker dark">¡Oferta Limitada!</p>
           <h2>Invierte en tu futuro: $2,500 por el curso completo</h2>
+        
           <p>
-            Costo real es de $4,200, nuestra promoción especial pagas solo $2,500. Incluye todo: clases en vivo, materiales premium, diploma al completar el curso y soporte personalizado. ¡No pierdas esta oportunidad!
+            Costo real es de $4,500, nuestra promoción especial pagas solo $2,500. Incluye todo: clases en vivo, materiales premium, diploma al completar el curso y soporte personalizado. ¡No pierdas esta oportunidad!
           </p>
           <div class="urgency-note">
-            ⏰ Solo quedan pocos cupos disponibles para el próximo grupo
+            Aplica tu descuento con el código: PROMO1 
           </div>
 
           <a
-            href="https://wa.me/5210000000000"
+            href="https://easyquickschool.com/planes"
             target="_blank"
             rel="noopener noreferrer"
             class="primary-btn"
           >
-            📞 Llamar ahora y obtener descuento extra
+            INSCRIBIRME AHORA
           </a>
           <p class="small-print">
-            *Descuento adicional disponible al contactar hoy. Consulta términos y condiciones.
+            *Descuento adicional disponible al contactar hoy. ⏰ Solo quedan pocos cupos disponibles para el próximo grupo
           </p>
         </div>
       </section>
@@ -201,11 +219,10 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
-.nav-left,
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 18px;
 }
 
 .nav-logo {
