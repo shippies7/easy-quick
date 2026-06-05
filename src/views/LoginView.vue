@@ -37,7 +37,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import { collection, getDocs } from 'firebase/firestore'
+import { doc, getDoc, query, collection, where, getDocs, limit } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
 const usuario = ref('')
@@ -49,32 +49,49 @@ const router = useRouter()
 const normalizeEmail = (value) =>
   String(value || '').trim().toLowerCase()
 
-async function redirectUserByRole(email) {
-  const cleanEmail = normalizeEmail(email)
+async function findByEmail(collectionName, email) {
+  const q = query(
+    collection(db, collectionName),
+    where('email', '==', email),
+    limit(1)
+  )
 
-  const teachersSnapshot = await getDocs(collection(db, 'teachers'))
-  const teacherFound = teachersSnapshot.docs.find((docItem) => {
-    const data = docItem.data()
-    return normalizeEmail(data.email) === cleanEmail
-  })
+  const snapshot = await getDocs(q)
+  return !snapshot.empty
+}
 
-  if (teacherFound) {
-    router.push('/teacher')
-    return
-  }
+async function redirectUserByRole(user) {
+  const cleanEmail = normalizeEmail(user.email)
 
-  const studentsSnapshot = await getDocs(collection(db, 'students'))
-  const studentFound = studentsSnapshot.docs.find((docItem) => {
-    const data = docItem.data()
-    return normalizeEmail(data.email) === cleanEmail
-  })
+  const studentByUid = await getDoc(doc(db, 'students', user.uid))
 
-  if (studentFound) {
+  if (studentByUid.exists()) {
     router.push('/clase')
     return
   }
 
-  errorMsg.value = 'No se encontró información para este usuario.'
+  const teacherByUid = await getDoc(doc(db, 'teachers', user.uid))
+
+  if (teacherByUid.exists()) {
+    router.push('/teacher')
+    return
+  }
+
+  const studentByEmail = await findByEmail('students', cleanEmail)
+
+  if (studentByEmail) {
+    router.push('/clase')
+    return
+  }
+
+  const teacherByEmail = await findByEmail('teachers', cleanEmail)
+
+  if (teacherByEmail) {
+    router.push('/teacher')
+    return
+  }
+
+  errorMsg.value = 'Tu cuenta existe, pero aún no tiene un perfil asignado. Contacta a administración.'
 }
 
 async function login() {
@@ -94,7 +111,7 @@ async function login() {
       password.value
     )
 
-    await redirectUserByRole(result.user.email)
+    await redirectUserByRole(result.user)
   } catch (error) {
     console.error(error)
     errorMsg.value = 'Correo o contraseña incorrectos.'
