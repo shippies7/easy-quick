@@ -5,10 +5,10 @@
       <h1>Completa tu registro</h1>
 
       <p class="subtitle">
-        Tu pago fue procesado. Ahora crea tu cuenta y selecciona el horario de tu preferencia.
+        Crea tu cuenta con el mismo correo de tu compra y selecciona tu horario de preferencia.
       </p>
 
-      <form class="register-form" @submit.prevent="handleRegister">
+      <form v-if="!awaitingVerification" class="register-form" @submit.prevent="handleRegister">
         <label>
           Nombre completo
           <input v-model="form.name" type="text" placeholder="Escribe tu nombre completo" required />
@@ -73,14 +73,24 @@
           </label>
         </div>
 
-        <button type="submit" :disabled="loading">
-          {{ loading ? 'Validando pago...' : 'Crear mi cuenta — versión segura' }}
+        <button type="submit" :disabled="loading || !sessionId">
+          {{ loading ? 'Procesando...' : 'Crear mi cuenta' }}
         </button>
 
         <p v-if="message" :class="['message', messageType]">
           {{ message }}
         </p>
       </form>
+
+      <div v-if="awaitingVerification" class="verification-box">
+        <h2>Verifica tu correo electrónico</h2>
+        <p>Te enviamos un enlace de verificación a <strong>{{ registeredEmail }}</strong>. Ábrelo y después regresa aquí.</p>
+        <button type="button" :disabled="loading" @click="finishRegistration">
+          {{ loading ? 'Comprobando...' : 'Ya verifiqué mi correo — continuar' }}
+        </button>
+        <button type="button" class="secondary-button" :disabled="loading" @click="resendVerification">Reenviar correo de verificación</button>
+        <p v-if="message" :class="['message', messageType]">{{ message }}</p>
+      </div>
 
       <p class="small-note">
         La asignación final del grupo será confirmada por administración.
@@ -90,116 +100,177 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute, RouterLink } from 'vue-router'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+  sendEmailVerification,
+  reload
+} from 'firebase/auth'
 import { auth } from '../firebase'
 
 const router = useRouter()
-
+const route = useRoute()
+const sessionId = String(route.query.session_id || '').trim()
 const loading = ref(false)
 const message = ref('')
 const messageType = ref('')
+const awaitingVerification = ref(false)
+const registeredEmail = ref('')
 
 const form = ref({
-  name: '',
-  email: '',
-  password: '',
-  groupPreference: '',
-  wantsToAddDiagnostic: false,
-  diagnosticResult: ''
+  name: '', email: '', password: '', groupPreference: '',
+  wantsToAddDiagnostic: false, diagnosticResult: ''
 })
 
 const groupOptions = {
   'martes-jueves-8pm': {
-    name: 'Martes y jueves',
-    schedule: '8:00 pm a 9:30 pm',
-    level: 'Principiantes',
-    status: 'pending_admin_assignment'
+    name: 'Martes y jueves', schedule: '8:00 pm a 9:30 pm',
+    level: 'Principiantes', status: 'pending_admin_assignment'
   },
   'lmv-8pm': {
-    name: 'Lunes, miércoles y viernes',
-    schedule: '8:00 pm a 9:00 pm',
-    level: 'Avanzado B1 en adelante',
-    status: 'pending_admin_assignment'
+    name: 'Lunes, miércoles y viernes', schedule: '8:00 pm a 9:00 pm',
+    level: 'Avanzado B1 en adelante', status: 'pending_admin_assignment'
   }
 }
 
-async function postJson(url, body) {
+async function postJson(url, body, token = null) {
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
     body: JSON.stringify(body)
   })
-
   const data = await response.json().catch(() => ({}))
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Ocurrió un error.')
-  }
-
+  if (!response.ok) throw new Error(data.error || 'Ocurrió un error.')
   return data
 }
 
+function showError(error) {
+  console.error(error)
+  messageType.value = 'error'
+  if (error.code === 'auth/weak-password') {
+    message.value = 'La contraseña debe tener al menos 6 caracteres.'
+  } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+    message.value = 'Ya existe una cuenta con este correo. Ingresa su contraseña correcta o recupera tu acceso desde Iniciar sesión.'
+  } else {
+    message.value = error.message || 'Ocurrió un error. Intenta nuevamente.'
+  }
+}
+
 async function handleRegister() {
+  if (loading.value) return
   loading.value = true
   message.value = ''
-  messageType.value = ''
-
   try {
-    const cleanName = form.value.name.trim()
-    const cleanEmail = form.value.email.trim().toLowerCase()
-    const password = form.value.password
-    const selectedGroup = groupOptions[form.value.groupPreference]
-
-    if (!selectedGroup) {
+    const email = form.value.email.trim().toLowerCase()
+    const name = form.value.name.trim()
+    if (!groupOptions[form.value.groupPreference]) {
       throw new Error('Selecciona un horario de preferencia.')
     }
-
-    await postJson('/api/verify-payment', {
-      email: cleanEmail
-    })
-
-    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password)
-
-    await updateProfile(userCredential.user, {
-      displayName: cleanName
-    })
-
-    await postJson('/api/complete-registration', {
-      uid: userCredential.user.uid,
-      name: cleanName,
-      email: cleanEmail,
-      groupPreferenceId: form.value.groupPreference,
-      groupPreference: selectedGroup,
-      diagnosticResult: form.value.wantsToAddDiagnostic ? form.value.diagnosticResult : null,
-      diagnosticSubmitted: form.value.wantsToAddDiagnostic
-    })
-
-    message.value = 'Cuenta creada correctamente. Te estamos redirigiendo a tu espacio.'
-    messageType.value = 'success'
-
-    setTimeout(() => {
-      router.push('/clase')
-    }, 1200)
-  } catch (error) {
-    console.error(error)
-
-    if (error.code === 'auth/email-already-in-use') {
-      message.value = 'Este correo ya tiene una cuenta. Intenta iniciar sesión.'
-    } else if (error.code === 'auth/weak-password') {
-      message.value = 'La contraseña debe tener al menos 6 caracteres.'
-    } else {
-      message.value = error.message || 'Ocurrió un error al crear tu cuenta. Intenta nuevamente.'
+    if (form.value.wantsToAddDiagnostic && !form.value.diagnosticResult) {
+      throw new Error('Selecciona el resultado de tu diagnóstico.')
     }
 
-    messageType.value = 'error'
+    if (!sessionId) throw new Error('No encontramos la referencia de tu pago. Regresa desde el enlace de confirmación de Stripe.')
+    await postJson('/api/verify-payment', { email, sessionId })
+
+    let user
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, form.value.password)
+      user = result.user
+      await updateProfile(user, { displayName: name })
+    } catch (error) {
+      if (error.code !== 'auth/email-already-in-use') throw error
+      const result = await signInWithEmailAndPassword(auth, email, form.value.password)
+      user = result.user
+    }
+
+    registeredEmail.value = email
+    awaitingVerification.value = true
+    if (!user.emailVerified) {
+      await sendEmailVerification(user)
+      message.value = 'Te enviamos un correo de verificación. Revisa también spam.'
+      messageType.value = 'success'
+    } else {
+      loading.value = false
+      await finishRegistration()
+    }
+  } catch (error) {
+    showError(error)
   } finally {
     loading.value = false
   }
 }
+
+async function resendVerification() {
+  if (loading.value) return
+  loading.value = true
+  message.value = ''
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Tu sesión terminó. Vuelve a iniciar sesión.')
+    await reload(user)
+    if (user.emailVerified) {
+      message.value = 'Tu correo ya está verificado. Pulsa continuar.'
+    } else {
+      await sendEmailVerification(user)
+      message.value = 'Enviamos un nuevo correo de verificación.'
+    }
+    messageType.value = 'success'
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function finishRegistration() {
+  if (loading.value) return
+  loading.value = true
+  message.value = ''
+  try {
+    const user = auth.currentUser
+    if (!user) throw new Error('Tu sesión terminó. Inicia sesión y vuelve a intentarlo.')
+    await reload(user)
+    if (!user.emailVerified) {
+      throw new Error('Tu correo todavía no está verificado. Abre el enlace que te enviamos.')
+    }
+    const email = form.value.email.trim().toLowerCase()
+    if (user.email?.toLowerCase() !== email) {
+      throw new Error('El correo de tu cuenta no coincide con el del registro.')
+    }
+    const token = await user.getIdToken(true)
+    await postJson('/api/complete-registration', {
+      uid: user.uid,
+      name: form.value.name.trim(),
+      email,
+      sessionId,
+      groupPreferenceId: form.value.groupPreference,
+      groupPreference: groupOptions[form.value.groupPreference],
+      diagnosticResult: form.value.wantsToAddDiagnostic ? form.value.diagnosticResult : null,
+      diagnosticSubmitted: form.value.wantsToAddDiagnostic
+    }, token)
+    message.value = 'Registro completado. Entrando a tu plataforma...'
+    messageType.value = 'success'
+    await router.push('/clase')
+  } catch (error) {
+    showError(error)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  if (!sessionId) {
+    message.value = 'No encontramos la referencia de pago. Accede desde el enlace de confirmación de Stripe.'
+    messageType.value = 'error'
+  }
+})
 </script>
 
 <style scoped>
@@ -426,4 +497,8 @@ h1 {
     padding: 30px 22px;
   }
 }
+ .verification-box { display: grid; gap: 14px; margin-top: 18px; }
+.verification-box button { border: 0; border-radius: 999px; padding: 14px; background: #152d5b; color: white; font-weight: 800; cursor: pointer; }
+.verification-box .secondary-button { background: #f2f4f9; color: #152d5b; }
+.verification-box button:disabled { opacity: .6; }
 </style>
