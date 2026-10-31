@@ -1,6 +1,4 @@
-Sí che, perdón, ya te entendí bien: **horarios en una sola línea, uno al lado del otro, más compactos, primero Principiantes y luego Avanzado**. Reemplaza todo `PlanesView.vue` por este: 
 
-```vue
 <template>
   <div>
     <header class="navbar">
@@ -85,7 +83,15 @@ Sí che, perdón, ya te entendí bien: **horarios en una sola línea, uno al lad
             </button>
 
             <button class="outline-button" @click="goToPayment(currentPlan.twoPaymentsLink)">
-              Pagar en 2 exhibiciones de ${{ currentPlan.twoPaymentsPrice }} MXN
+              2 pagos mensuales de ${{ currentPlan.twoPaymentsPrice }} MXN
+            </button>
+
+            <button
+              v-if="currentPlan.threePaymentsLink"
+              class="outline-button"
+              @click="goToPayment(currentPlan.threePaymentsLink)"
+            >
+              3 pagos mensuales de ${{ currentPlan.threePaymentsPrice }} MXN
             </button>
           </article>
 
@@ -97,13 +103,42 @@ Sí che, perdón, ya te entendí bien: **horarios en una sola línea, uno al lad
             <p class="price">${{ currentPlan.monthlyPrice }} MXN / mes</p>
 
             <p class="description">
-              Paga mes a mes durante 9 meses y mantén activo tu acceso mientras avanzas.
+              Plan de 10 pagos mensuales automáticos. Tu acceso se mantiene activo mientras tus pagos estén al corriente.
             </p>
 
             <button class="primary-button" @click="goToPayment(currentPlan.monthlyLink)">
               Elegir plan mensual
             </button>
           </article>
+        </div>
+
+        <div v-if="isHelsy" class="international-section">
+          <h3>¿Prefieres pagar en dólares?</h3>
+          <p>Opciones de pago para estudiantes internacionales (USD).</p>
+
+          <div class="international-grid">
+            <button class="outline-button" @click="goToPayment(usdPlans.fullLink)">
+              Pago único: $125 USD
+            </button>
+            <button class="outline-button" @click="goToPayment(usdPlans.twoPaymentsLink)">
+              2 pagos mensuales de $63 USD
+            </button>
+            <button class="outline-button" @click="goToPayment(usdPlans.threePaymentsLink)">
+              3 pagos mensuales de $42 USD
+            </button>
+            <button class="outline-button" @click="goToPayment(usdPlans.monthlyLink)">
+              10 pagos mensuales de $18 USD
+            </button>
+          </div>
+        </div>
+
+        <div class="advanced-plan">
+          <h3>Curso avanzado</h3>
+          <p>Para estudiantes con nivel B1 en adelante.</p>
+          <p class="price">$1,200 MXN</p>
+          <button class="primary-button" @click="goToPayment(advancedLink)">
+            Pagar curso avanzado
+          </button>
         </div>
       </section>
 
@@ -167,7 +202,7 @@ Sí che, perdón, ya te entendí bien: **horarios en una sola línea, uno al lad
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const promoCode = ref('')
 const promoMessage = ref('Puedes dejarlo vacío y pagar el precio normal.')
@@ -200,6 +235,17 @@ const plans = {
     twoPaymentsLink: 'https://buy.stripe.com/aFa9AM0bsagrchqai1cfK03',
     monthlyLink: 'https://buy.stripe.com/00w7sE3nE9cn1CMcq9cfK00'
   },
+  HELSY: {
+    fullPrice: '2,500',
+    twoPaymentsPrice: '1,250',
+    threePaymentsPrice: '834',
+    monthlyPrice: '350',
+    hasDiscount: true,
+    fullLink: 'https://buy.stripe.com/00w00c8HYdsD2GQbm5cfK06',
+    twoPaymentsLink: 'https://buy.stripe.com/fZu00c8HY3S32GQ9dXcfK04',
+    threePaymentsLink: 'https://buy.stripe.com/9B68wI1fw0FRdlu1LvcfK0e',
+    monthlyLink: 'https://buy.stripe.com/3cIbIU8HY3S3bdm2PzcfK0b'
+  },
   OPORTUNIDAD: {
     fullPrice: '2,000',
     twoPaymentsPrice: '1,000',
@@ -212,14 +258,48 @@ const plans = {
 }
 
 const currentPlan = ref(plans.DEFAULT)
+const isHelsy = computed(() => currentPlan.value === plans.HELSY)
+
+const advancedLink = 'https://buy.stripe.com/7sY14g3nEcoza9iai1cfK0a'
+
+const usdPlans = {
+  fullLink: 'https://buy.stripe.com/28EcMY7DU1JV81a0HrcfK0c',
+  twoPaymentsLink: 'https://buy.stripe.com/00w6oA9M274fchqbm5cfK0g',
+  threePaymentsLink: 'https://buy.stripe.com/eVqaEQcYe88jbdm89TcfK0f',
+  monthlyLink: 'https://buy.stripe.com/aFa7sE9M20FRa9ibm5cfK0d'
+}
 
 const includes = [
-  { icon: '🎥', title: 'Clases en vivo', text: 'Sesiones en vivo con profesores calificados y acompañamiento durante el proceso.' },
-  { icon: '📚', title: 'Material Cambridge', text: 'Uso de libros Interchange y materiales reconocidos internacionalmente.' },
-  { icon: '💻', title: 'Plataforma educativa digital', text: 'Acceso organizado a clases, materiales, comunicados y recursos del programa.' },
-  { icon: '▶️', title: 'Clases grabadas', text: 'Grabaciones disponibles para quienes no puedan asistir a una clase en vivo.' },
-  { icon: '🗣️', title: 'Práctica oral constante', text: 'Conversación aplicada, pronunciación y actividades enfocadas en el uso real del idioma.' },
-  { icon: '🌱', title: 'Grupos por nivel', text: 'Grupos para principiantes y estudiantes avanzados, según el avance del alumno.' }
+  {
+    icon: '🎥',
+    title: 'Clases en vivo',
+    text: 'Sesiones en vivo con profesores calificados y acompañamiento durante el proceso.'
+  },
+  {
+    icon: '📚',
+    title: 'Material Cambridge',
+    text: 'Uso de libros Interchange y materiales reconocidos internacionalmente.'
+  },
+  {
+    icon: '💻',
+    title: 'Plataforma educativa digital',
+    text: 'Acceso organizado a clases, materiales, comunicados y recursos del programa.'
+  },
+  {
+    icon: '▶️',
+    title: 'Clases grabadas',
+    text: 'Grabaciones disponibles para quienes no puedan asistir a una clase en vivo.'
+  },
+  {
+    icon: '🗣️',
+    title: 'Práctica oral constante',
+    text: 'Conversación aplicada, pronunciación y actividades enfocadas en el uso real del idioma.'
+  },
+  {
+    icon: '🌱',
+    title: 'Grupos por nivel',
+    text: 'Grupos para principiantes y estudiantes avanzados, según el avance del alumno.'
+  }
 ]
 
 function applyCode() {
@@ -642,5 +722,46 @@ h1 {
     font-size: 13px;
   }
 }
+
+.international-section,
+.advanced-plan {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid rgba(21, 45, 91, 0.12);
+  border-radius: 24px;
+  background: #fff;
+  text-align: center;
+}
+
+.international-section h3,
+.advanced-plan h3 {
+  margin: 0 0 10px;
+  color: #152d5b;
+}
+
+.international-section p,
+.advanced-plan > p:not(.price) {
+  color: #40506b;
+}
+
+.international-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.international-grid .outline-button {
+  margin-top: 0;
+}
+
+.advanced-plan .primary-button {
+  max-width: 380px;
+}
+
+@media (max-width: 700px) {
+  .international-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
-```
