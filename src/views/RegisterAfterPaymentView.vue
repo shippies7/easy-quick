@@ -6,6 +6,7 @@
       <div v-if="checking" class="status">Estamos preparando tu inscripción...</div>
 
       <template v-else-if="intake">
+        <template v-if="!awaitingVerification && !registrationComplete">
         <p class="success">✓ Pago confirmado</p>
         <h1>¡Bienvenido{{ displayName ? ', ' + firstName : '' }}!</h1>
         <p class="subtitle">Completa tu inscripción en unos minutos.</p>
@@ -60,15 +61,39 @@
           <p class="muted small">Este es el correo de tu compra y no se puede modificar.</p>
           <label>Contraseña<input v-model="password" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
           <label>Confirmar contraseña<input v-model="confirmPassword" type="password" autocomplete="new-password" /></label>
-          <button class="primary" :disabled="working" @click="register">{{ working ? 'Procesando...' : 'Crear mi cuenta' }}</button>
+          <p v-if="!accepted" class="warning">Debes aceptar el acuerdo de inscripción para crear tu cuenta.</p>
+          <button class="primary" :disabled="working || !accepted" @click="register">{{ working ? 'Procesando...' : 'Crear mi cuenta' }}</button>
         </section>
 
-        <section v-else class="step">
-          <h2>Verifica tu correo</h2>
-          <p>Te enviamos un enlace a <strong>{{ intake.email }}</strong>. Revísalo y vuelve aquí.</p>
-          <button class="primary" :disabled="working" @click="finish">{{ working ? 'Comprobando...' : 'Ya verifiqué mi correo' }}</button>
-          <button class="outline" :disabled="working" @click="resend">Reenviar verificación</button>
-        </section>
+        </template>
+        <template v-else>
+          <p class="success">{{ registrationComplete ? '✓ Inscripción completada' : '✓ Tu cuenta ha sido creada' }}</p>
+          <h1>{{ registrationComplete ? '¡Todo listo!' : '¡Bienvenido a Easy & Quick School!' }}</h1>
+          <p class="subtitle">{{ registrationComplete ? 'Tu inscripción está confirmada.' : 'Solo falta verificar tu correo para terminar tu inscripción.' }}</p>
+          <div class="identity">
+            <p><span>Alumno</span><strong>{{ displayName }}</strong></p>
+            <p><span>Matrícula</span><strong>{{ intake.matricula }}</strong></p>
+            <p><span>Correo</span><strong>{{ intake.email }}</strong></p>
+            <p><span>Grupo</span><strong>{{ selectedGroup.name }}</strong></p>
+            <p><span>Horario (México, zona centro)</span><strong>{{ selectedGroup.schedule }}</strong></p>
+            <p><span>Inicio de clases</span><strong>{{ selectedGroup.start }}</strong></p>
+          </div>
+          <section class="step">
+            <h2>Tu acuerdo de inscripción</h2>
+            <p class="muted">Conserva una copia de las condiciones que aceptaste.</p>
+            <button type="button" class="outline" @click="printAgreement">Descargar mi acuerdo en PDF</button>
+          </section>
+          <section v-if="!registrationComplete" class="step">
+            <h2>Verifica tu correo electrónico</h2>
+            <p>Te enviamos un enlace a <strong>{{ intake.email }}</strong>. Ábrelo y regresa aquí.</p>
+            <button class="primary" :disabled="working" @click="finish">{{ working ? 'Comprobando...' : 'Ya verifiqué mi correo' }}</button>
+            <button class="outline" :disabled="working" @click="resend">Reenviar verificación</button>
+          </section>
+          <section v-else class="step">
+            <h2>¡Tu inscripción está completa!</h2>
+            <button class="primary" @click="router.push('/login')">Ingresar a mi plataforma</button>
+          </section>
+        </template>
 
         <p v-if="error" class="error" role="alert">{{ error }}</p>
         <div v-if="showHelp" class="help">
@@ -109,6 +134,7 @@ const group = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const awaitingVerification = ref(false)
+const registrationComplete = ref(false)
 const error = ref('')
 const showHelp = ref(false)
 const signatureAvailable = ref(true) // Cambiar a true al colocar la firma autorizada en public/school-signature.png
@@ -119,9 +145,10 @@ const supportEmail = computed(() => `mailto:info@easyquickschool.com?subject=${e
 const supportWhatsapp = computed(() => `https://wa.me/528135583914?text=${encodeURIComponent(`Hola, necesito ayuda con mi inscripción a Easy & Quick School.\nNombre: ${displayName.value}\nMatrícula: ${intake.value?.matricula}\nCorreo: ${intake.value?.email}`)}`)
 
 const groups = {
-  'lmv-8pm': { name: 'Lunes, miércoles y viernes', schedule: '8:00 pm a 9:00 pm', level: 'Curso completo', groupCode: 'LMV1012' },
-  'sabados-9am': { name: 'Sábados', schedule: '9:00 am a 12:00 pm', level: 'Curso completo', groupCode: 'SAB1013' }
+  'lmv-8pm': { name: 'Lunes, miércoles y viernes', schedule: '8:00 a 9:00 p. m.', start: '16 de noviembre de 2026', level: 'Curso completo', groupCode: 'LMV1012' },
+  'sabados-9am': { name: 'Sábados', schedule: '9:00 a. m. a 12:00 p. m.', start: '21 de noviembre de 2026', level: 'Curso completo', groupCode: 'SAB1013' }
 }
+const selectedGroup = computed(() => groups[group.value] || { name: 'Pendiente', schedule: 'Pendiente', start: 'Pendiente' })
 const clauses = [
   { title: '1. Prestación del servicio', points: ['La Prestadora del Servicio brindará asesoría en el aprendizaje del idioma inglés.', 'El servicio se impartirá mediante clases grupales en modalidad en línea.', 'Incluye acceso a sesiones en vivo y materiales digitales de apoyo.'] },
   { title: '2. Duración y estructura del programa', points: ['El programa contempla un total de 108 horas académicas.', 'Equivalente a 12 horas mensuales durante 9 meses consecutivos.', 'El contenido se distribuye en niveles progresivos.', 'El horario se elegirá entre los grupos disponibles y estará sujeto a confirmación administrativa.'] },
@@ -204,7 +231,8 @@ async function finish() {
       agreementAccepted: true, agreementVersion: '2026-10-31',
       agreementAcceptedAt: new Date().toISOString()
     }, token)
-    await router.push('/clase')
+    registrationComplete.value = true
+    awaitingVerification.value = false
   } catch (e) { error.value = e.message; showHelp.value = true } finally { working.value = false }
 }
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, x => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[x])) }
@@ -222,5 +250,5 @@ function printAgreement() {
 </script>
 
 <style scoped>
-*{box-sizing:border-box}.page{min-height:100vh;padding:45px 18px;background:radial-gradient(circle at top left,#fcecef,transparent 36%),radial-gradient(circle at top right,#e9eff9,transparent 38%),#fff;font-family:Arial,sans-serif;color:#152d5b}.card{max-width:780px;margin:auto;padding:35px;background:white;border:1px solid #e3e8f1;border-radius:25px;box-shadow:0 15px 35px #152d5b12}.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:900;color:#d32041}.success{font-weight:800;color:#167347}h1{font-size:clamp(29px,5vw,42px);margin:8px 0}.subtitle,.muted{color:#52627a;line-height:1.55}.small{font-size:12px}.identity{background:#f3f6fb;border:1px solid #dce5f2;border-radius:16px;padding:10px 18px;margin:25px 0}.identity p{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:12px 0}.identity span{color:#64748b}.step{border:1px solid #e3e8f1;border-radius:17px;padding:23px;margin:18px 0;display:grid;gap:13px}.step h2{font-size:21px;margin:0;display:flex;align-items:center;gap:10px}.num{display:inline-grid;place-items:center;background:#d32041;color:white;border-radius:50%;width:32px;height:32px;font-size:16px}.step label:not(.choice):not(.check){display:grid;gap:7px;font-weight:700;font-size:14px}.step input:not([type=radio]):not([type=checkbox]){width:100%;padding:13px;border:1px solid #cad5e6;border-radius:11px;font-size:15px}.step input[readonly]{background:#f1f4fa;color:#53647b}.agreement{max-height:320px;overflow:auto;padding:18px;background:#fafcff;border:1px solid #dce4f0;border-radius:12px;font-size:13px;line-height:1.55}.agreement h3{text-align:center}.agreement h4{margin:18px 0 6px}.agreement ul{padding-left:22px}.sign{margin-top:25px;padding-top:8px;border-top:1px solid #9caec8;display:grid;width:max-content;gap:4px}.sign img{max-width:150px;max-height:75px}.sign small{color:#66788e}.check,.choice{display:flex;gap:12px;align-items:flex-start}.check input,.choice input{accent-color:#d32041;width:18px;height:18px;flex-shrink:0}.choice{border:1px solid #dce5f2;padding:14px;border-radius:12px;background:#f8faff;cursor:pointer}.choice span{display:grid;gap:5px}.choice small{color:#53647b}.primary,.outline{border:0;border-radius:999px;padding:14px 18px;font-weight:800;cursor:pointer;font-size:14px}.primary{background:#152d5b;color:white}.outline{background:white;color:#152d5b;border:2px solid #152d5b}.primary:disabled,.outline:disabled{opacity:.55;cursor:not-allowed}.error{background:#fce8ec;color:#991b1b;border-radius:12px;padding:14px}.help{background:#f5f8ff;border-radius:14px;padding:20px;margin-top:20px}.help a{display:block;margin:10px 0;color:#152d5b;font-weight:700}.status{text-align:center;padding:35px}@media(max-width:600px){.card{padding:20px}.step{padding:16px}.identity p{display:grid;gap:4px}}
+*{box-sizing:border-box}.page{min-height:100vh;padding:45px 18px;background:radial-gradient(circle at top left,#fcecef,transparent 36%),radial-gradient(circle at top right,#e9eff9,transparent 38%),#fff;font-family:Arial,sans-serif;color:#152d5b}.card{max-width:780px;margin:auto;padding:35px;background:white;border:1px solid #e3e8f1;border-radius:25px;box-shadow:0 15px 35px #152d5b12}.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:900;color:#d32041}.success{font-weight:800;color:#167347}h1{font-size:clamp(29px,5vw,42px);margin:8px 0}.subtitle,.muted{color:#52627a;line-height:1.55}.small{font-size:12px}.identity{background:#f3f6fb;border:1px solid #dce5f2;border-radius:16px;padding:10px 18px;margin:25px 0}.identity p{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:12px 0}.identity span{color:#64748b}.step{border:1px solid #e3e8f1;border-radius:17px;padding:23px;margin:18px 0;display:grid;gap:13px}.step h2{font-size:21px;margin:0;display:flex;align-items:center;gap:10px}.num{display:inline-grid;place-items:center;background:#d32041;color:white;border-radius:50%;width:32px;height:32px;font-size:16px}.step label:not(.choice):not(.check){display:grid;gap:7px;font-weight:700;font-size:14px}.step input:not([type=radio]):not([type=checkbox]){width:100%;padding:13px;border:1px solid #cad5e6;border-radius:11px;font-size:15px}.step input[readonly]{background:#f1f4fa;color:#53647b}.agreement{max-height:320px;overflow:auto;padding:18px;background:#fafcff;border:1px solid #dce4f0;border-radius:12px;font-size:13px;line-height:1.55}.agreement h3{text-align:center}.agreement h4{margin:18px 0 6px}.agreement ul{padding-left:22px}.sign{margin-top:25px;padding-top:8px;border-top:1px solid #9caec8;display:grid;width:max-content;gap:4px}.sign img{max-width:150px;max-height:75px}.sign small{color:#66788e}.check,.choice{display:flex;gap:12px;align-items:flex-start}.check input,.choice input{accent-color:#d32041;width:18px;height:18px;flex-shrink:0}.choice{border:1px solid #dce5f2;padding:14px;border-radius:12px;background:#f8faff;cursor:pointer}.choice span{display:grid;gap:5px}.choice small{color:#53647b}.primary,.outline{border:0;border-radius:999px;padding:14px 18px;font-weight:800;cursor:pointer;font-size:14px}.primary{background:#152d5b;color:white}.outline{background:white;color:#152d5b;border:2px solid #152d5b}.primary:disabled,.outline:disabled{opacity:.55;cursor:not-allowed}.warning{background:#fff4e5;color:#8a4b08;border-radius:12px;padding:12px;font-size:13px}.error{background:#fce8ec;color:#991b1b;border-radius:12px;padding:14px}.help{background:#f5f8ff;border-radius:14px;padding:20px;margin-top:20px}.help a{display:block;margin:10px 0;color:#152d5b;font-weight:700}.status{text-align:center;padding:35px}@media(max-width:600px){.card{padding:20px}.step{padding:16px}.identity p{display:grid;gap:4px}}
 </style>
