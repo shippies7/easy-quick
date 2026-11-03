@@ -504,6 +504,7 @@ import {
   getDocs,
   query,
   where,
+  limit,
   doc,
   updateDoc
 } from 'firebase/firestore'
@@ -1014,72 +1015,50 @@ async function handleFileUpload(event) {
 
 async function loadTeacherByEmail(email) {
   const teachersRef = collection(db, 'teachers')
-  const snapshot = await getDocs(teachersRef)
-
-  const foundTeacher = snapshot.docs.find((docItem) => {
-    const data = docItem.data()
-    return normalizeEmail(data.email) === normalizeEmail(email)
-  })
-
+  const snapshot = await getDocs(
+    query(teachersRef, where('email', '==', normalizeEmail(email)), limit(1))
+  )
+  const foundTeacher = snapshot.docs[0]
   if (!foundTeacher) return null
-
-  return {
-    id: foundTeacher.id,
-    ...foundTeacher.data()
-  }
+  return { id: foundTeacher.id, ...foundTeacher.data() }
 }
 
 async function loadTeacherGroups() {
   if (!teacherData.id) return
-
-  const groupsRef = collection(db, 'groups')
-  const groupsQuery = query(groupsRef, where('teacherId', '==', teacherData.id))
+  const groupsQuery = query(
+    collection(db, 'groups'), where('teacherId', '==', teacherData.id)
+  )
   const snapshot = await getDocs(groupsQuery)
+  teacherGroups.value = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+}
 
-  teacherGroups.value = snapshot.docs.map((docItem) => ({
-    id: docItem.id,
-    ...docItem.data()
+// Solo consultar los grupos asignados al profesor, nunca la colección completa.
+async function loadTeacherCollection(collectionName) {
+  const groupIds = [...new Set(teacherGroups.value.map((g) => g.id).filter(Boolean))]
+  if (!groupIds.length) return []
+  const results = await Promise.all(groupIds.map(async (groupId) => {
+    const snapshot = await getDocs(
+      query(collection(db, collectionName), where('groupId', '==', groupId))
+    )
+    return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
   }))
+  return [...new Map(results.flat().map((item) => [item.id, item])).values()]
 }
 
 async function loadStudents() {
-  const studentsRef = collection(db, 'students')
-  const snapshot = await getDocs(studentsRef)
-
-  students.value = snapshot.docs.map((docItem) => ({
-    id: docItem.id,
-    ...docItem.data()
-  }))
+  students.value = await loadTeacherCollection('students')
 }
 
 async function loadPosts() {
-  const postsRef = collection(db, 'posts')
-  const snapshot = await getDocs(postsRef)
-
-  posts.value = snapshot.docs.map((docItem) => ({
-    id: docItem.id,
-    ...docItem.data()
-  }))
+  posts.value = await loadTeacherCollection('posts')
 }
 
 async function loadComments() {
-  const commentsRef = collection(db, 'comments')
-  const snapshot = await getDocs(commentsRef)
-
-  comments.value = snapshot.docs.map((docItem) => ({
-    id: docItem.id,
-    ...docItem.data()
-  }))
+  comments.value = await loadTeacherCollection('comments')
 }
 
 async function loadLessons() {
-  const lessonsRef = collection(db, 'lessons')
-  const snapshot = await getDocs(lessonsRef)
-
-  lessons.value = snapshot.docs.map((docItem) => ({
-    id: docItem.id,
-    ...docItem.data()
-  }))
+  lessons.value = await loadTeacherCollection('lessons')
 }
 
 async function createPost() {

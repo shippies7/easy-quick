@@ -200,7 +200,12 @@ import {
   addDoc,
   getDocs,
   doc,
-  updateDoc
+  updateDoc,
+  query,
+  where,
+  limit,
+  increment,
+  writeBatch
 } from 'firebase/firestore'
 
 const teacherName = ref('')
@@ -224,6 +229,16 @@ const groups = ref([])
 
 const normalizeEmail = (value) =>
   String(value || '').trim().toLowerCase()
+
+const emailExists = async (collectionName, email) => {
+  const results = await getDocs(query(
+    collection(db, collectionName),
+    where('email', '==', normalizeEmail(email)),
+    limit(1)
+  ))
+  return !results.empty
+}
+
 
 const loadTeachers = async () => {
   try {
@@ -298,6 +313,11 @@ const createTeacher = async () => {
       return
     }
 
+    if (await emailExists('teachers', teacherEmail.value)) {
+      alert('Ya existe un profesor registrado con ese correo')
+      return
+    }
+
     const nextTeacherNumber = await getNextTeacherNumber()
     const teacherCode = `PRO${nextTeacherNumber}`
 
@@ -312,9 +332,20 @@ const createTeacher = async () => {
     })
 
     if (assignedGroupId.value) {
-      await updateDoc(doc(db, 'groups', assignedGroupId.value), {
+      const previousTeacherId = groups.value.find(
+        (group) => group.id === assignedGroupId.value
+      )?.teacherId
+      const batch = writeBatch(db)
+      batch.update(doc(db, 'groups', assignedGroupId.value), {
         teacherId: teacherRef.id
       })
+      if (previousTeacherId && previousTeacherId !== teacherRef.id) {
+        const previousTeacher = teachers.value.find((item) => item.id === previousTeacherId)
+        if (previousTeacher?.assignedGroupId === assignedGroupId.value) {
+          batch.update(doc(db, 'teachers', previousTeacherId), { assignedGroupId: null })
+        }
+      }
+      await batch.commit()
     }
 
     alert(`Profesor creado: ${teacherCode}`)
@@ -411,6 +442,11 @@ const createStudent = async () => {
       return
     }
 
+    if (await emailExists('students', studentEmail.value)) {
+      alert('Ya existe un alumno registrado con ese correo')
+      return
+    }
+
     const nextStudentNumber = await getNextStudentNumber()
     const studentCode = `ALU${nextStudentNumber}`
 
@@ -430,7 +466,7 @@ const createStudent = async () => {
     })
 
     await updateDoc(doc(db, 'groups', selectedGroup.id), {
-      studentCount: (selectedGroup.studentCount || 0) + 1
+      studentCount: increment(1)
     })
 
     alert(`Alumno creado: ${studentCode}`)
@@ -453,13 +489,40 @@ const assignTeacherToGroup = async () => {
       return
     }
 
-    await updateDoc(doc(db, 'groups', assignmentGroupId.value), {
+    const targetGroup = groups.value.find((item) => item.id === assignmentGroupId.value)
+    const selectedTeacher = teachers.value.find((item) => item.id === assignmentTeacherId.value)
+    if (!targetGroup || !selectedTeacher) {
+      alert('No se encontró el profesor o grupo seleccionado')
+      return
+    }
+
+    const batch = writeBatch(db)
+    batch.update(doc(db, 'groups', assignmentGroupId.value), {
       teacherId: assignmentTeacherId.value
     })
-
-    await updateDoc(doc(db, 'teachers', assignmentTeacherId.value), {
+    batch.update(doc(db, 'teachers', assignmentTeacherId.value), {
       assignedGroupId: assignmentGroupId.value
     })
+
+    if (targetGroup.teacherId && targetGroup.teacherId !== assignmentTeacherId.value) {
+      const previousTeacher = teachers.value.find((item) => item.id === targetGroup.teacherId)
+      if (previousTeacher?.assignedGroupId === assignmentGroupId.value) {
+        batch.update(doc(db, 'teachers', targetGroup.teacherId), {
+          assignedGroupId: null
+        })
+      }
+    }
+
+    if (selectedTeacher.assignedGroupId && selectedTeacher.assignedGroupId !== assignmentGroupId.value) {
+      const previousGroup = groups.value.find((item) => item.id === selectedTeacher.assignedGroupId)
+      if (previousGroup?.teacherId === assignmentTeacherId.value) {
+        batch.update(doc(db, 'groups', selectedTeacher.assignedGroupId), {
+          teacherId: null
+        })
+      }
+    }
+
+    await batch.commit()
 
     alert('Asignación guardada correctamente')
 

@@ -7,6 +7,16 @@
       </button>
     </div>
 
+    <div v-if="verificationNotice" class="verification-banner">
+      <strong>Verifica tu correo electrónico</strong>
+      <p>{{ verificationNotice }}</p>
+      <div class="verification-actions">
+        <button type="button" :disabled="verificationBusy" @click="resendVerification">{{ verificationBusy ? 'Enviando...' : 'Reenviar correo de verificación' }}</button>
+        <button type="button" :disabled="verificationBusy" @click="checkVerification">Ya verifiqué mi correo</button>
+      </div>
+      <p v-if="verificationMessage" role="status">{{ verificationMessage }}</p>
+    </div>
+
     <div class="content">
       <div class="dashboard-grid">
         <!-- COLUMNA IZQUIERDA -->
@@ -448,12 +458,16 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ZoomMtg } from '@zoom/meetingsdk'
-import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { signOut, onAuthStateChanged, sendEmailVerification, reload } from 'firebase/auth'
 import { useRouter } from 'vue-router'
 import { auth, db } from '../firebase'
 import {
   collection,
   getDocs,
+  getDoc,
+  query,
+  where,
+  limit,
   addDoc,
   doc,
   updateDoc,
@@ -471,6 +485,49 @@ const submittingReplyFor = ref('')
 const submittingLessonId = ref('')
 const lessonViewMode = ref('pending')
 const router = useRouter()
+const verificationBusy = ref(false)
+const verificationMessage = ref('')
+const emailVerified = ref(true)
+const verificationDeadline = ref(null)
+const verificationNotice = computed(() => {
+  if (emailVerified.value) return ''
+  const deadline = verificationDeadline.value
+  if (!deadline) return 'Revisa tu bandeja de entrada y confirma tu correo para mantener tu acceso.'
+  const remaining = Math.ceil((deadline.getTime() - Date.now()) / 86400000)
+  return remaining > 0
+    ? `Tienes ${remaining} día${remaining === 1 ? '' : 's'} para verificarlo. Mientras tanto puedes utilizar tu plataforma.`
+    : 'Tu plazo de verificación terminó. Verifica tu correo cuanto antes para evitar restricciones de acceso.'
+})
+
+async function resendVerification() {
+  verificationBusy.value = true
+  verificationMessage.value = ''
+  try {
+    if (!auth.currentUser) throw new Error('Inicia sesión nuevamente.')
+    await sendEmailVerification(auth.currentUser, {
+      url: 'https://easyquickschool.com/login'
+    })
+    verificationMessage.value = 'Te enviamos otro enlace. Revisa también la carpeta de spam.'
+  } catch (e) {
+    verificationMessage.value = e.message || 'No se pudo reenviar el correo.'
+  } finally { verificationBusy.value = false }
+}
+
+async function checkVerification() {
+  verificationBusy.value = true
+  verificationMessage.value = ''
+  try {
+    if (!auth.currentUser) throw new Error('Inicia sesión nuevamente.')
+    await reload(auth.currentUser)
+    await auth.currentUser.getIdToken(true)
+    emailVerified.value = auth.currentUser.emailVerified
+    verificationMessage.value = emailVerified.value
+      ? '¡Correo verificado correctamente!'
+      : 'Todavía no aparece verificado. Abre el enlace que recibiste por correo.'
+  } catch (e) {
+    verificationMessage.value = e.message || 'No se pudo comprobar el correo.'
+  } finally { verificationBusy.value = false }
+}
 
 const posts = ref([])
 const comments = ref([])
@@ -719,7 +776,7 @@ groupData.actualUnit =
   })
 
   loadingPosts.value = true
-  unsubPosts = onSnapshot(collection(db, 'posts'), (snapshot) => {
+  unsubPosts = onSnapshot(query(collection(db, 'posts'), where('groupId', '==', studentData.groupId)), (snapshot) => {
     posts.value = snapshot.docs.map((docItem) => ({
       id: docItem.id,
       ...docItem.data()
@@ -727,7 +784,7 @@ groupData.actualUnit =
     loadingPosts.value = false
   })
 
-  unsubComments = onSnapshot(collection(db, 'comments'), (snapshot) => {
+  unsubComments = onSnapshot(query(collection(db, 'comments'), where('groupId', '==', studentData.groupId)), (snapshot) => {
     comments.value = snapshot.docs.map((docItem) => ({
       id: docItem.id,
       ...docItem.data()
@@ -735,7 +792,7 @@ groupData.actualUnit =
   })
 
   loadingLessons.value = true
-  unsubLessons = onSnapshot(collection(db, 'lessons'), (snapshot) => {
+  unsubLessons = onSnapshot(query(collection(db, 'lessons'), where('groupId', '==', studentData.groupId)), (snapshot) => {
     lessons.value = snapshot.docs.map((docItem) => ({
       id: docItem.id,
       ...docItem.data()
@@ -743,7 +800,7 @@ groupData.actualUnit =
     loadingLessons.value = false
   })
 
-  unsubLessonSubmissions = onSnapshot(collection(db, 'lessonSubmissions'), (snapshot) => {
+  unsubLessonSubmissions = onSnapshot(query(collection(db, 'lessonSubmissions'), where('studentId', '==', studentData.id)), (snapshot) => {
     lessonSubmissions.value = snapshot.docs
       .map((docItem) => ({
         id: docItem.id,
@@ -1028,20 +1085,34 @@ function formatLessonDate(value) {
 
 async function loadStudentDataByEmail(email) {
   try {
-    const studentsRef = collection(db, 'students')
-    const snapshot = await getDocs(studentsRef)
+    const currentUser = auth.currentUser
+    if (!currentUser) return
 
-    const normalizedEmail = normalizeEmail(email)
+    // Los alumnos nuevos se guardan con su UID; los antiguos pueden tener ID automático.
+    const ownDoc = await getDoc(doc(db, 'students', currentUser.uid))
+    let studentDoc = ownDoc.exists() ? ownDoc : null
 
-    const studentDoc = snapshot.docs.find((docItem) => {
-      const data = docItem.data()
-      const firestoreEmail = normalizeEmail(data.email)
-      return firestoreEmail === normalizedEmail
-    })
+    if (!studentDoc) {
+      const studentsRef = collection(db, 'students')
+      const snapshot = await getDocs(
+        query(studentsRef, where('email', '==', normalizeEmail(email)), limit(1))
+      )
+      studentDoc = snapshot.docs[0] || null
+    }
 
     if (studentDoc) {
       const data = studentDoc.data()
 
+      const rawDeadline = data.emailVerificationDeadline || data.verificationDeadline || null
+      const rawCreated = data.createdAt || null
+      const dateFrom = (value) => value?.toDate?.() || (value?.seconds ? new Date(value.seconds * 1000) : (value ? new Date(value) : null))
+      const deadline = dateFrom(rawDeadline)
+      const created = dateFrom(rawCreated)
+      verificationDeadline.value = deadline && !Number.isNaN(deadline.getTime())
+        ? deadline
+        : created && !Number.isNaN(created.getTime())
+          ? new Date(created.getTime() + 7 * 86400000)
+          : null
       studentData.id = studentDoc.id
       studentData.name = data.name || ''
       studentData.studentCode = data.studentCode || ''
@@ -1275,9 +1346,14 @@ onMounted(() => {
     cleanupRealtimeListeners()
 
     if (user?.email) {
+      emailVerified.value = user.emailVerified
       await loadStudentDataByEmail(user.email)
       lessonViewMode.value = 'pending'
       startRealtimeListeners()
+    } else {
+      emailVerified.value = true
+      verificationDeadline.value = null
+      router.replace('/login')
     }
   })
 })
@@ -1296,6 +1372,12 @@ onUnmounted(() => {
 </script>
 
 <style>
+.verification-banner{max-width:1280px;margin:22px auto 0;padding:18px 22px;background:#fff7e8;border:1px solid #e8c88e;border-radius:16px;color:#563a13;box-sizing:border-box}
+.verification-banner p{margin:8px 0;line-height:1.5}
+.verification-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.verification-actions button{padding:10px 14px;border:0;border-radius:9px;background:#163d7a;color:white;font-weight:700;cursor:pointer}
+.verification-actions button:disabled{opacity:.6;cursor:wait}
+
 :root {
   --brand-red: #c8102e;
   --brand-blue: #163d7a;

@@ -69,7 +69,7 @@
         <template v-else>
           <p class="success">{{ registrationComplete ? '✓ Inscripción completada' : '✓ Tu cuenta ha sido creada' }}</p>
           <h1>{{ registrationComplete ? '¡Todo listo!' : '¡Bienvenido a Easy & Quick School!' }}</h1>
-          <p class="subtitle">{{ registrationComplete ? 'Tu inscripción está confirmada.' : 'Solo falta verificar tu correo para terminar tu inscripción.' }}</p>
+          <p class="subtitle">{{ registrationComplete ? 'Tu inscripción está confirmada. Ya puedes entrar a tus clases.' : 'Estamos terminando tu inscripción.' }}</p>
           <div class="identity">
             <p><span>Alumno</span><strong>{{ displayName }}</strong></p>
             <p><span>Matrícula</span><strong>{{ intake.matricula }}</strong></p>
@@ -83,15 +83,18 @@
             <p class="muted">Conserva una copia de las condiciones que aceptaste.</p>
             <button type="button" class="outline" @click="printAgreement">Descargar mi acuerdo en PDF</button>
           </section>
-          <section v-if="!registrationComplete" class="step">
-            <h2>Verifica tu correo electrónico</h2>
-            <p>Te enviamos un enlace a <strong>{{ intake.email }}</strong>. Ábrelo y regresa aquí.</p>
-            <button class="primary" :disabled="working" @click="finish">{{ working ? 'Comprobando...' : 'Ya verifiqué mi correo' }}</button>
-            <button class="outline" :disabled="working" @click="resend">Reenviar verificación</button>
+          <section v-if="registrationComplete" class="step">
+            <h2>¡Ya puedes comenzar!</h2>
+            <button class="primary" @click="router.push('/clase')">Entrar a mi plataforma</button>
+            <button class="outline" @click="router.push('/login')">Iniciar sesión</button>
+            <p v-if="!emailVerified" class="warning">Verifica tu correo dentro de los próximos 7 días. Puedes entrar a la plataforma mientras tanto.</p>
+            <p v-else class="success">✓ Correo electrónico verificado</p>
+            <button v-if="!emailVerified" class="outline" :disabled="working" @click="resend">{{ working ? 'Enviando...' : 'Reenviar correo de verificación' }}</button>
+            <button v-if="!emailVerified" class="outline" :disabled="working" @click="checkVerification">Ya verifiqué mi correo</button>
           </section>
           <section v-else class="step">
-            <h2>¡Tu inscripción está completa!</h2>
-            <button class="primary" @click="router.push('/login')">Ingresar a mi plataforma</button>
+            <h2>Terminemos tu inscripción</h2>
+            <button class="primary" :disabled="working" @click="finish">{{ working ? 'Procesando...' : 'Finalizar inscripción' }}</button>
           </section>
         </template>
 
@@ -135,6 +138,7 @@ const password = ref('')
 const confirmPassword = ref('')
 const awaitingVerification = ref(false)
 const registrationComplete = ref(false)
+const emailVerified = ref(false)
 const error = ref('')
 const showHelp = ref(false)
 const signatureAvailable = ref(true) // Cambiar a true al colocar la firma autorizada en public/school-signature.png
@@ -200,8 +204,12 @@ async function register() {
       user = result.user
     }
     awaitingVerification.value = true
-    if (!user.emailVerified) await sendEmailVerification(user)
-    else { working.value = false; await finish() }
+    emailVerified.value = user.emailVerified
+    await finish()
+    if (!user.emailVerified) {
+      try { await sendEmailVerification(user) }
+      catch (mailError) { console.warn('No se pudo enviar la verificación:', mailError) }
+    }
   } catch (e) {
     error.value = e.code === 'auth/email-already-in-use' ? 'Esta cuenta ya existe. Inicia sesión.' : (e.message || 'No pudimos crear tu cuenta.')
     showHelp.value = true
@@ -214,13 +222,23 @@ async function resend() {
     await sendEmailVerification(auth.currentUser)
   } catch (e) { error.value = e.message } finally { working.value = false }
 }
+async function checkVerification() {
+  working.value = true; error.value = ''
+  try {
+    if (!auth.currentUser) throw new Error('Inicia sesión para consultar tu correo.')
+    await reload(auth.currentUser)
+    emailVerified.value = auth.currentUser.emailVerified
+    if (!emailVerified.value) error.value = 'Tu correo aún no aparece como verificado. Inténtalo de nuevo en unos momentos.'
+  } catch (e) { error.value = e.message } finally { working.value = false }
+}
+
 async function finish() {
   working.value = true; error.value = ''
   try {
     const user = auth.currentUser
     if (!user) throw new Error('Tu sesión terminó. Inicia sesión para continuar.')
     await reload(user)
-    if (!user.emailVerified) throw new Error('Todavía no has verificado tu correo.')
+    emailVerified.value = user.emailVerified
     if (user.email?.toLowerCase() !== intake.value.email.toLowerCase()) throw new Error('El correo de la cuenta no coincide con el de la compra.')
     const token = await user.getIdToken(true)
     await post('/api/complete-registration', {
@@ -232,7 +250,7 @@ async function finish() {
       agreementAcceptedAt: new Date().toISOString()
     }, token)
     registrationComplete.value = true
-    awaitingVerification.value = false
+    awaitingVerification.value = true
   } catch (e) { error.value = e.message; showHelp.value = true } finally { working.value = false }
 }
 function escapeHtml(v) { return String(v ?? '').replace(/[&<>"']/g, x => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[x])) }

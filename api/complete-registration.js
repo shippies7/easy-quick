@@ -1,8 +1,10 @@
 import Stripe from 'stripe'
 import admin from 'firebase-admin'
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const cleanEmail = value => String(value || '').trim().toLowerCase()
 const idOf = value => typeof value === 'string' ? value : value?.id || null
+const VERIFICATION_DAYS = 7
 const GROUP_OPTIONS = {
   'lmv-8pm': { name: 'Lunes, miércoles y viernes', schedule: '8:00 pm a 9:00 pm', level: 'Curso completo', groupCode: 'LMV1012' },
   'sabados-9am': { name: 'Sábados', schedule: '9:00 am a 12:00 pm', level: 'Curso completo', groupCode: 'SAB1013' }
@@ -32,7 +34,6 @@ export default async function handler(req, res) {
     let decoded
     try { decoded = await admin.auth().verifyIdToken(token, true) }
     catch { return res.status(401).json({ success: false, error: 'Tu sesión no es válida.' }) }
-    if (!decoded.email_verified) return res.status(403).json({ success: false, error: 'Verifica tu correo antes de terminar.' })
     const body = req.body || {}
     const sessionId = String(body.sessionId || body.session_id || '').trim()
     const email = cleanEmail(body.email)
@@ -78,10 +79,11 @@ export default async function handler(req, res) {
       const now = admin.firestore.FieldValue.serverTimestamp()
       const previous = studentSnap.exists ? studentSnap.data() : {}
       const oldGroupId = previous.groupId || previous.assignedGroupId || null
-      // Un usuario de Firebase equivale a un alumno: no incrementar de nuevo si ya está en el mismo grupo.
       if (oldGroupId && oldGroupId !== groupRef.id) throw new Error('Este alumno ya está inscrito en otro grupo. Solicita el cambio al administrador.')
       const alreadyCounted = oldGroupId === groupRef.id
       const studentMatricula = String(previous.matricula || matricula)
+      const verified = decoded.email_verified === true
+      const verificationDeadline = previous.emailVerificationDeadline || admin.firestore.Timestamp.fromMillis(Date.now() + VERIFICATION_DAYS * 24 * 60 * 60 * 1000)
       tx.set(studentRef, {
         name, email, matricula: studentMatricula, role: 'student', status: 'active',
         paymentStatus: payment.paymentStatus, accessStatus: 'active', source: 'stripe_payment_link',
@@ -94,6 +96,7 @@ export default async function handler(req, res) {
         assignedByAdmin: false, diagnosticResult: previous.diagnosticResult ?? null,
         diagnosticSubmitted: previous.diagnosticSubmitted ?? false,
         agreementAccepted: true, agreementVersion: '2026-10-31', agreementAcceptedAt: now,
+        emailVerified: verified, emailVerificationDeadline: verificationDeadline,
         createdAt: previous.createdAt || now, updatedAt: now
       }, { merge: true })
       if (!alreadyCounted) tx.update(groupRef, { studentCount: admin.firestore.FieldValue.increment(1) })
@@ -102,7 +105,8 @@ export default async function handler(req, res) {
         updatedAt: now }, { merge: true })
       tx.set(intakeRef, { status: 'completed', studentUid: decoded.uid, completedAt: now }, { merge: true })
     })
-    return res.status(200).json({ success: true, matricula, message: 'Registro completado correctamente.' })
+    return res.status(200).json({ success: true, matricula, emailVerificationRequired: !decoded.email_verified,
+      message: 'Registro completado correctamente.' })
   } catch (error) {
     console.error('Error completando registro:', error)
     return res.status(400).json({ success: false, error: error.message || 'No se pudo completar el registro.' })
